@@ -33,7 +33,7 @@ export default function InviteText() {
         para celebrar o{' '}
         <span style={{ color: '#E8891A', fontWeight: 700 }}>1º Aninho</span>
         {' '}da nossa{' '}
-        <span style={{ color: '#E8891A', fontWeight: 700 }}>Zoe!</span>
+        <span style={{ color: '#E8891A', fontWeight: 800, fontSize: 'clamp(44px, 13vw, 64px)', lineHeight: 1, letterSpacing: '-0.01em' }}>Zoe.</span>
       </motion.h2>
 
       <motion.div

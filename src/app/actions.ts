@@ -88,34 +88,6 @@ export async function updateConfirmationAction(
   }
 }
 
-export async function submitTimeCapsuleMessageAction(
-  familyId: string | null,
-  authorName: string,
-  message: string
-) {
-  try {
-    if (!authorName.trim() || !message.trim()) {
-      return { success: false, error: 'Nome e mensagem são obrigatórios.' };
-    }
-
-    const { error } = await supabase.from('messages').insert({
-      family_id: familyId,
-      author_name: authorName,
-      message: message,
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    await trackEvent(familyId, 'message_sent');
-
-    return { success: true };
-  } catch (err) {
-    console.error('submitTimeCapsuleMessageAction error:', err);
-    return { success: false, error: 'Erro ao enviar a mensagem.' };
-  }
-}
 
 export async function logAnalyticsEventAction(familyId: string | null, eventType: string) {
   try {
@@ -177,10 +149,6 @@ export async function getDashboardStatsAction() {
       .from('guests')
       .select('status, type');
 
-    const { count: totalMessages } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true });
-
     const { data: analyticsEvents } = await supabase
       .from('analytics_events')
       .select('event_type');
@@ -216,7 +184,6 @@ export async function getDashboardStatsAction() {
         families: famStats,
         guests: guestStats,
         clicks: clicksStats,
-        messagesCount: totalMessages || 0,
       }
     };
   } catch (err) {
@@ -385,20 +352,6 @@ export async function bulkAddFamiliesAction(
   }
 }
 
-export async function getMessagesAction() {
-  try {
-    const { data: messages, error } = await supabase
-      .from('messages')
-      .select('*, families(name)')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { success: true, messages };
-  } catch (err) {
-    console.error('getMessagesAction error:', err);
-    return { success: false, error: 'Erro ao carregar mensagens.' };
-  }
-}
 
 export async function getAnalyticsEventsAction() {
   try {

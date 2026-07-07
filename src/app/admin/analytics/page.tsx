@@ -20,9 +20,7 @@ export default async function AdminAnalyticsPage() {
         return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md uppercase border border-emerald-100">Confirmou RSVP ✅</span>;
       case 'calendar_added':
         return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md uppercase border border-pink-100">Add Agenda 📅</span>;
-      case 'message_sent':
-        return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md uppercase border border-indigo-100">Cápsula Escrita ✉️</span>;
-      default:
+default:
         return <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-gray-50 px-2 py-0.5 rounded-md uppercase border border-gray-100">{type}</span>;
     }
   };

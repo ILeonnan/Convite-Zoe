@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Users, MessageSquare, BarChart3, Download, LogOut } from 'lucide-react';
+import { Home, Users, BarChart3, Download, LogOut } from 'lucide-react';
 import { adminLogoutAction } from '@/app/actions';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +16,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { label: 'Painel', href: '/admin', icon: <Home className="w-4 h-4" /> },
     { label: 'Famílias', href: '/admin/families', icon: <Users className="w-4 h-4" /> },
-    { label: 'Cápsula', href: '/admin/messages', icon: <MessageSquare className="w-4 h-4" /> },
     { label: 'Métricas', href: '/admin/analytics', icon: <BarChart3 className="w-4 h-4" /> },
     { label: 'Exportar', href: '/admin/export', icon: <Download className="w-4 h-4" /> },
   ];

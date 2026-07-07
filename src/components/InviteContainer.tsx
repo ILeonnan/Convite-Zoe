@@ -8,6 +8,7 @@ import InviteButtons from './InviteButtons';
 import SceneParticles from './scene/SceneParticles';
 import LocationModal from './LocationModal';
 import RSVPModal from './RSVPModal';
+import GiftModal from './GiftModal';
 import { logAnalyticsEventAction } from '@/app/actions';
 
 interface Guest {
@@ -35,6 +36,7 @@ interface InviteContainerProps {
 export default function InviteContainer({ family, guests }: InviteContainerProps) {
   const [showLocation, setShowLocation] = useState(false);
   const [showRSVP, setShowRSVP] = useState(false);
+  const [showGifts, setShowGifts] = useState(false);
   const [hasAnswered, setHasAnswered] = useState(() => guests.every((g) => g.status !== 'pending'));
   const introRef = useRef<HTMLDivElement>(null);
   const inviteRef = useRef<HTMLDivElement>(null);
@@ -195,9 +197,11 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
             }}
             onGifts={() => {
               logAnalyticsEventAction(family.id, 'gift_viewed');
+              setShowGifts(true);
             }}
           />
           <LocationModal open={showLocation} onClose={() => setShowLocation(false)} />
+          <GiftModal open={showGifts} onClose={() => setShowGifts(false)} />
           <RSVPModal
             open={showRSVP}
             onClose={() => setShowRSVP(false)}

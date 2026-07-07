@@ -1,5 +1,5 @@
 import { getDashboardStatsAction } from '@/app/actions';
-import { MailOpen, UserCheck, MessageSquare, Compass, Gift, CalendarCheck2, Users } from 'lucide-react';
+import { MailOpen, UserCheck, Compass, Gift, CalendarCheck2, Users } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ export default async function AdminDashboardPage() {
     );
   }
 
-  const { families, guests, clicks, messagesCount } = res.stats;
+  const { families, guests, clicks } = res.stats;
 
   const kpis = [
     {
@@ -37,12 +37,6 @@ export default async function AdminDashboardPage() {
       value: families.confirmed,
       icon: <UserCheck className="w-5 h-5 text-emerald-500" />,
       color: 'bg-emerald-50/20 border-emerald-100',
-    },
-    {
-      label: 'Cápsula do Tempo',
-      value: messagesCount,
-      icon: <MessageSquare className="w-5 h-5 text-golden-honey" />,
-      color: 'bg-honey-yellow/10 border-honey-yellow/30',
     },
   ];
 
