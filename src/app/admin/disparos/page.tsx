@@ -1,7 +1,7 @@
 import { getFamiliesAction } from '@/app/actions';
 import { Send } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function DisparosPage() {
   const res = await getFamiliesAction();

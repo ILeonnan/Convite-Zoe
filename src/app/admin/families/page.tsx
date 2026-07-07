@@ -1,7 +1,7 @@
 import { getFamiliesAction, getAnalyticsEventsAction } from '@/app/actions';
 import FamiliesManager from '@/components/admin/FamiliesManager';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function AdminFamiliesPage() {
   const [familiesRes, eventsRes] = await Promise.all([

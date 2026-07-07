@@ -1,7 +1,7 @@
 import { getDashboardStatsAction } from '@/app/actions';
 import { MailOpen, UserCheck, Compass, Gift, CalendarCheck2, Users } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function AdminDashboardPage() {
   const res = await getDashboardStatsAction();

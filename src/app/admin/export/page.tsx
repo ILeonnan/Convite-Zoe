@@ -1,7 +1,7 @@
 import { getFamiliesAction } from '@/app/actions';
 import ExportViewer from '@/components/admin/ExportViewer';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function AdminExportPage() {
   const res = await getFamiliesAction();

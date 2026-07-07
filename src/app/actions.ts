@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { trackEvent } from '@/lib/analytics';
 import { signJWT } from '@/lib/jwt';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 
 export async function getFamilyByTokenAction(token: string) {
   try {
@@ -27,8 +29,8 @@ export async function getFamilyByTokenAction(token: string) {
       return { success: false, error: 'Não foi possível buscar a lista de convidados.' };
     }
 
-    // Track open event
-    await trackEvent(family.id, 'invite_opened');
+    // Fire-and-forget: não bloqueia o carregamento do convite
+    trackEvent(family.id, 'invite_opened').catch(() => {});
 
     return {
       success: true,
@@ -124,6 +126,27 @@ export async function adminLoginAction(password: string) {
   }
 }
 
+export async function adminLoginFormAction(formData: FormData) {
+  const password = (formData.get('password') as string) ?? '';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'adminzoe';
+
+  if (password !== adminPassword) {
+    redirect('/admin/login?error=wrong');
+  }
+
+  const token = await signJWT({ role: 'admin' });
+  const cookieStore = await cookies();
+  cookieStore.set('zoe_admin_session', token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7,
+    path: '/',
+  });
+
+  redirect('/admin');
+}
+
 export async function adminLogoutAction() {
   try {
     const cookieStore = await cookies();
@@ -137,21 +160,17 @@ export async function adminLogoutAction() {
 
 export async function getDashboardStatsAction() {
   try {
-    const { count: totalFamilies } = await supabase
-      .from('families')
-      .select('*', { count: 'exact', head: true });
+    // Todas as 3 queries em paralelo — 3x mais rápido
+    const [familiesRes, guestsRes, analyticsRes] = await Promise.all([
+      supabase.from('families').select('status'),
+      supabase.from('guests').select('status, type'),
+      supabase.from('analytics_events').select('event_type'),
+    ]);
 
-    const { data: familyStatus } = await supabase
-      .from('families')
-      .select('status');
-      
-    const { data: guestsData } = await supabase
-      .from('guests')
-      .select('status, type');
-
-    const { data: analyticsEvents } = await supabase
-      .from('analytics_events')
-      .select('event_type');
+    const familyStatus   = familiesRes.data;
+    const guestsData     = guestsRes.data;
+    const analyticsEvents = analyticsRes.data;
+    const totalFamilies  = familyStatus?.length ?? 0;
 
     const famStats = {
       total: totalFamilies || 0,
@@ -194,29 +213,15 @@ export async function getDashboardStatsAction() {
 
 export async function getFamiliesAction() {
   try {
-    const { data: families, error: famError } = await supabase
+    // Uma única query com guests embutidos via foreign key relation
+    const { data: families, error } = await supabase
       .from('families')
-      .select('*')
+      .select('*, guests(*)')
       .order('name', { ascending: true });
 
-    if (famError) throw famError;
+    if (error) throw error;
 
-    const { data: guests, error: guestError } = await supabase
-      .from('guests')
-      .select('*');
-
-    if (guestError) throw guestError;
-
-    // Group guests by family
-    const familiesWithGuests = families.map((fam) => {
-      const famGuests = guests.filter((g) => g.family_id === fam.id);
-      return {
-        ...fam,
-        guests: famGuests,
-      };
-    });
-
-    return { success: true, families: familiesWithGuests };
+    return { success: true, families: families ?? [] };
   } catch (err) {
     console.error('getFamiliesAction error:', err);
     return { success: false, error: 'Erro ao buscar famílias.' };
@@ -263,6 +268,8 @@ export async function addFamilyAction(
       if (guestError) throw guestError;
     }
 
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
     return { success: true };
   } catch (err) {
     console.error('addFamilyAction error:', err);
@@ -274,6 +281,8 @@ export async function deleteFamilyAction(id: string) {
   try {
     const { error } = await supabase.from('families').delete().eq('id', id);
     if (error) throw error;
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
     return { success: true };
   } catch (err) {
     console.error('deleteFamilyAction error:', err);
@@ -292,6 +301,8 @@ export async function updateFamilySentStatusAction(id: string, isSent: boolean) 
       .eq('id', id);
 
     if (error) throw error;
+    revalidatePath('/admin/families');
+    revalidatePath('/admin');
     return { success: true };
   } catch (err) {
     console.error('updateFamilySentStatusAction error:', err);
@@ -308,43 +319,46 @@ export async function bulkAddFamiliesAction(
   }[]
 ) {
   try {
-    for (const item of familiesList) {
-      const token = Math.random().toString(36).substring(2, 10).toUpperCase();
-      
-      const { data: family, error: famError } = await supabase
-        .from('families')
-        .insert({
-          name: item.familyName,
-          responsible: item.responsible,
-          phone: item.phone,
-          token: token,
-          status: 'pending',
-        })
-        .select()
-        .single();
-        
-      if (famError || !family) {
-        throw new Error(`Erro ao criar família ${item.familyName}: ${famError?.message}`);
-      }
-      
-      if (item.guests && item.guests.length > 0) {
-        const guestsToInsert = item.guests.map((g) => ({
-          family_id: family.id,
-          name: g.name,
-          type: g.type,
-          status: 'pending',
-        }));
-        
-        const { error: guestError } = await supabase
-          .from('guests')
-          .insert(guestsToInsert);
-          
-        if (guestError) {
-          throw new Error(`Erro ao inserir convidados da família ${item.familyName}: ${guestError.message}`);
-        }
+    // Insere todas as famílias de uma vez (1 chamada ao banco)
+    const familiesToInsert = familiesList.map((item) => ({
+      name: item.familyName,
+      responsible: item.responsible,
+      phone: item.phone,
+      token: Math.random().toString(36).substring(2, 10).toUpperCase(),
+      status: 'pending',
+    }));
+
+    const { data: families, error: famError } = await supabase
+      .from('families')
+      .insert(familiesToInsert)
+      .select('id, name');
+
+    if (famError || !families) {
+      throw new Error('Erro ao inserir famílias: ' + famError?.message);
+    }
+
+    // Monta todos os convidados de uma vez usando o id retornado de cada família
+    const allGuests = families.flatMap((fam, i) =>
+      (familiesList[i].guests ?? []).map((g) => ({
+        family_id: fam.id,
+        name: g.name,
+        type: g.type,
+        status: 'pending',
+      }))
+    );
+
+    if (allGuests.length > 0) {
+      const { error: guestError } = await supabase
+        .from('guests')
+        .insert(allGuests);
+
+      if (guestError) {
+        throw new Error('Erro ao inserir convidados: ' + guestError.message);
       }
     }
-    
+
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
     return { success: true };
   } catch (err: any) {
     console.error('bulkAddFamiliesAction error:', err);
@@ -365,6 +379,46 @@ export async function getAnalyticsEventsAction() {
   } catch (err) {
     console.error('getAnalyticsEventsAction error:', err);
     return { success: false, error: 'Erro ao carregar métricas.' };
+  }
+}
+
+export async function resetFamilyConfirmationAction(familyId: string) {
+  try {
+    const { error: guestError } = await supabase
+      .from('guests')
+      .update({ status: 'pending', confirmed_at: null })
+      .eq('family_id', familyId);
+
+    if (guestError) throw guestError;
+
+    const { error: famError } = await supabase
+      .from('families')
+      .update({ status: 'sent', last_interaction: null })
+      .eq('id', familyId);
+
+    if (famError) throw famError;
+
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
+    return { success: true };
+  } catch (err) {
+    console.error('resetFamilyConfirmationAction error:', err);
+    return { success: false, error: 'Erro ao resetar confirmação.' };
+  }
+}
+
+export async function clearAllDataAction() {
+  try {
+    await supabase.from('analytics_events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('guests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('families').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
+    revalidatePath('/admin/analytics');
+    return { success: true };
+  } catch (err) {
+    console.error('clearAllDataAction error:', err);
+    return { success: false, error: 'Erro ao limpar dados.' };
   }
 }
 

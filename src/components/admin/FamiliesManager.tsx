@@ -4,11 +4,12 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Plus, Upload, Trash2, Copy, Check,
-  MessageCircle, Bell, ChevronDown, ChevronUp, X, Download, FileSpreadsheet,
+  MessageCircle, Bell, ChevronDown, ChevronUp, X, Download, FileSpreadsheet, RotateCcw,
 } from 'lucide-react';
 import {
   addFamilyAction, deleteFamilyAction,
   bulkAddFamiliesAction, updateFamilySentStatusAction,
+  resetFamilyConfirmationAction,
 } from '@/app/actions';
 
 interface Guest {
@@ -156,6 +157,13 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
     const res = await deleteFamilyAction(id);
     if (res.success) { router.refresh(); setTimeout(() => window.location.reload(), 500); }
     else alert('Erro ao excluir.');
+  };
+
+  const handleResetConfirmation = async (id: string, name: string) => {
+    if (!confirm(`Resetar confirmação de "${name}"?\n\nTodos os integrantes voltarão para Pendente e o convidado poderá confirmar novamente.`)) return;
+    const res = await resetFamilyConfirmationAction(id);
+    if (res.success) { router.refresh(); setTimeout(() => window.location.reload(), 500); }
+    else alert('Erro ao resetar.');
   };
 
   const handleCreateFamily = async (e: React.FormEvent) => {
@@ -390,6 +398,12 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                   className="p-2 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 rounded-xl cursor-pointer">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+                {(fam.status === 'confirmed' || fam.status === 'declined') && (
+                  <button onClick={() => handleResetConfirmation(fam.id, fam.name)} title="Liberar reconfirmação"
+                    className="p-2 bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-600 rounded-xl cursor-pointer">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button onClick={() => setExpandedId(isExpanded ? null : fam.id)}
                   className="p-2 bg-white border border-rose-cream/30 text-soft-brown/50 rounded-xl cursor-pointer">
                   {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -491,6 +505,12 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                             className="p-1.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 rounded-lg cursor-pointer">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
+                          {(fam.status === 'confirmed' || fam.status === 'declined') && (
+                            <button onClick={() => handleResetConfirmation(fam.id, fam.name)} title="Liberar reconfirmação"
+                              className="p-1.5 bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-600 rounded-lg cursor-pointer">
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

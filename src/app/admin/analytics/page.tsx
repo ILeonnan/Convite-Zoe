@@ -1,6 +1,6 @@
 import { getAnalyticsEventsAction, getFamiliesAction } from '@/app/actions';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 const COLUMNS: { key: string; label: string; emoji: string; binary?: boolean }[] = [
   { key: 'invite_opened',         label: 'Abriu',       emoji: '📩' },
