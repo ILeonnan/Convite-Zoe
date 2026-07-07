@@ -1,0 +1,22 @@
+{
+  "name": "Zoe 1 Aninho - Convite Oficial",
+  "short_name": "Convite Zoe",
+  "description": "Convite interativo premium para o primeiro aniversário de Zoe",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#FFF9F1",
+  "theme_color": "#FFF9F1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
