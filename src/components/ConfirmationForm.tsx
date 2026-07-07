@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { updateConfirmationAction } from '@/app/actions';
+import { updateConfirmationAction, logAnalyticsEventAction } from '@/app/actions';
 import ChromaKeyVideo from './ChromaKeyVideo';
+import { EVENT } from '@/lib/eventInfo';
 
 interface Guest {
   id: string;
@@ -26,8 +27,42 @@ const typeLabel: Record<string, string> = {
   baby: 'Bebê (colo)',
 };
 
+function buildGoogleCalendarUrl() {
+  return (
+    'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+    '&text=' + encodeURIComponent('🐝 1º Aninho da Zoe') +
+    '&dates=20250905T170000/20250905T210000' +
+    '&ctz=America/Sao_Paulo' +
+    '&location=' + encodeURIComponent('Casa de Festas Mariana, Rua Juruena 170, Senador Vasconcelos, Rio de Janeiro - RJ') +
+    '&details=' + encodeURIComponent('Venha celebrar o primeiro aniversário da Zoe! 🍯')
+  );
+}
+
+function downloadICS() {
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Zoe1Birthday//PT',
+    'BEGIN:VEVENT',
+    'DTSTART;TZID=America/Sao_Paulo:20250905T170000',
+    'DTEND;TZID=America/Sao_Paulo:20250905T210000',
+    'SUMMARY:🐝 1º Aninho da Zoe',
+    'LOCATION:Casa de Festas Mariana\\, Rua Juruena 170\\, Rio de Janeiro',
+    'DESCRIPTION:Venha celebrar o primeiro aniversário da Zoe! 🍯',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'aniversario-zoe.ics';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ConfirmationForm({ familyId, initialGuests, onComplete }: ConfirmationFormProps) {
-  const alreadyAnswered = false; // TESTE: desabilitado temporariamente
+  const alreadyAnswered = initialGuests.length > 0 && initialGuests.every((g) => g.status !== 'pending');
 
   const [responses, setResponses] = useState<Record<string, 'confirmed' | 'declined'>>(
     alreadyAnswered
@@ -39,6 +74,7 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
     alreadyAnswered ? 'success' : 'intro'
   );
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -87,6 +123,9 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
       if (anyoneConfirmed) {
         setShowCelebration(true);
         confetti({ particleCount: 160, spread: 80, origin: { y: 0.5 }, colors: ['#F8D66D', '#EAB75D', '#F8C9D8', '#FFF9F1', '#FFB347'] });
+      } else {
+        // No celebration video — show calendar immediately
+        setTimeout(() => setShowCalendar(true), 600);
       }
     } else {
       setError(result.error || 'Erro ao salvar. Tente novamente.');
@@ -148,6 +187,27 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
             margin: 0,
           }}>
             🐝 Os nomes confirmados aqui entrarão na <strong>listinha da portinha da colmeia</strong>. Não será possível trocar ou substituir um convidado por outro — confirme com carinho quem realmente poderá comparecer. 🍯
+
+          {/* Data e hora */}
+          <div style={{
+            marginTop: 14,
+            paddingTop: 14,
+            borderTop: '1px solid rgba(232,137,26,0.25)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <span style={{ fontSize: 18 }}>🗓️</span>
+            <div style={{ textAlign: 'left' }}>
+              <p style={{ margin: 0, fontFamily: 'var(--font-outfit)', fontWeight: 800, fontSize: 'clamp(13px, 3.8vw, 15px)', color: '#3D1800' }}>
+                {EVENT.dateShort}
+              </p>
+              <p style={{ margin: 0, fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 12, color: '#B8650A' }}>
+                {EVENT.weekday} · às {EVENT.time}
+              </p>
+            </div>
+          </div>
           </p>
         </div>
 
@@ -699,7 +759,7 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
         }}>
           <ChromaKeyVideo
             src="/BeeComemora.mp4"
-            onEnded={() => setShowCelebration(false)}
+            onEnded={() => { setShowCelebration(false); setShowCalendar(true); }}
             style={{ width: 'min(100vw, 480px)' }}
           />
         </div>,
@@ -771,6 +831,125 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
           </div>
         </div>
       )}
+
+      {/* Salvar na Agenda */}
+      <AnimatePresence>
+        {showCalendar && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.34, 1.1, 0.64, 1] }}
+            style={{ marginTop: 24 }}
+          >
+            {/* Divisor */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, transparent, rgba(232,137,26,0.3))' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#B8650A', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'var(--font-outfit)' }}>Não esqueça!</span>
+              <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, transparent, rgba(232,137,26,0.3))' }} />
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(255,217,90,0.18) 0%, rgba(232,137,26,0.12) 100%)',
+              border: '1.5px solid rgba(232,137,26,0.32)',
+              borderRadius: 20,
+              padding: '18px 18px 16px',
+              textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 24, marginBottom: 8 }}>🗓️</p>
+              <p style={{
+                fontFamily: 'var(--font-playfair)',
+                fontStyle: 'italic',
+                fontWeight: 700,
+                fontSize: 'clamp(15px, 4.2vw, 18px)',
+                color: '#3D1800',
+                marginBottom: 6,
+              }}>
+                Salve na sua agenda!
+              </p>
+              <p style={{
+                fontFamily: 'var(--font-outfit)',
+                fontSize: 12,
+                color: '#7A4200',
+                marginBottom: 16,
+                lineHeight: 1.5,
+              }}>
+                05 de Setembro · Sexta-feira · 17h00
+              </p>
+
+              {/* Botões */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                {/* Google Calendar */}
+                <a
+                  href={buildGoogleCalendarUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => logAnalyticsEventAction(familyId, 'calendar_added')}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    padding: '13px 10px',
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, #FFD95A 0%, #F5A623 100%)',
+                    border: 'none',
+                    textDecoration: 'none',
+                    fontFamily: 'var(--font-outfit)',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    color: '#3D1800',
+                    boxShadow: '0 3px 14px rgba(232,137,26,0.35)',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="4" width="18" height="16" rx="2" stroke="#3D1800" strokeWidth="1.8"/>
+                    <line x1="3" y1="9" x2="21" y2="9" stroke="#3D1800" strokeWidth="1.8"/>
+                    <line x1="8" y1="2" x2="8" y2="6" stroke="#3D1800" strokeWidth="1.8" strokeLinecap="round"/>
+                    <line x1="16" y1="2" x2="16" y2="6" stroke="#3D1800" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                  Google
+                </a>
+
+                {/* Apple / ICS */}
+                <button
+                  type="button"
+                  onClick={() => { logAnalyticsEventAction(familyId, 'calendar_added'); downloadICS(); }}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    padding: '13px 10px',
+                    borderRadius: 14,
+                    background: 'rgba(255,255,255,0.7)',
+                    border: '1.5px solid rgba(232,137,26,0.3)',
+                    fontFamily: 'var(--font-outfit)',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    color: '#5C3200',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(4px)',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#5C3200" strokeWidth="1.8" fill="none"/>
+                    <circle cx="12" cy="9" r="2.5" stroke="#5C3200" strokeWidth="1.8"/>
+                  </svg>
+                  Apple / ICS
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
     </>
   );

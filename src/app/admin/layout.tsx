@@ -2,23 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Users, BarChart3, Download, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut } from 'lucide-react';
 import { adminLogoutAction } from '@/app/actions';
+
+const NAV = [
+  { label: 'Painel',     href: '/admin',               Icon: LayoutDashboard, exact: true },
+  { label: 'Convidados', href: '/admin/families',       Icon: Users },
+  { label: 'Config.',    href: '/admin/configuracoes',  Icon: Settings },
+];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
-  }
-
-  const navItems = [
-    { label: 'Painel', href: '/admin', icon: <Home className="w-4 h-4" /> },
-    { label: 'Famílias', href: '/admin/families', icon: <Users className="w-4 h-4" /> },
-    { label: 'Métricas', href: '/admin/analytics', icon: <BarChart3 className="w-4 h-4" /> },
-    { label: 'Exportar', href: '/admin/export', icon: <Download className="w-4 h-4" /> },
-  ];
+  if (pathname === '/admin/login') return <>{children}</>;
 
   const handleLogout = async () => {
     await adminLogoutAction();
@@ -28,56 +25,81 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-vanilla-white flex flex-col">
+
       {/* Header */}
       <header className="bg-daisy-white border-b border-rose-cream/40 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
             <span className="text-2xl">🐝</span>
             <div>
-              <h1 className="font-title text-base md:text-lg font-bold text-soft-brown">Doce Colmeia</h1>
-              <p className="text-[10px] text-soft-brown/50 uppercase tracking-widest font-bold">Zoe 1 Aninho</p>
+              <h1 className="font-title text-base font-bold text-soft-brown leading-tight">Doce Colmeia</h1>
+              <p className="text-[9px] text-soft-brown/45 uppercase tracking-widest font-bold">Central · Zoe 1 Aninho</p>
             </div>
           </div>
-          
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:text-rose-500 cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:text-rose-500 transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Sair
           </button>
         </div>
       </header>
 
-      {/* Main Content & Sidebar */}
-      <div className="flex-1 flex flex-col md:flex-row max-w-6xl w-full mx-auto p-4 md:p-6 gap-6">
-        {/* Navigation Sidebar */}
-        <aside className="w-full md:w-48 shrink-0">
-          <nav className="flex md:flex-col gap-1 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
+      {/* Body */}
+      <div className="flex-1 flex flex-col md:flex-row max-w-5xl w-full mx-auto md:p-6 md:gap-6">
+
+        {/* Desktop sidebar */}
+        <aside className="hidden md:block w-44 shrink-0">
+          <nav className="flex flex-col gap-1 sticky top-24">
+            {NAV.map(({ label, href, Icon, exact }) => {
+              const active = exact ? pathname === href : pathname.startsWith(href);
               return (
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                    isActive
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                    active
                       ? 'bg-golden-honey text-white shadow-xs'
-                      : 'bg-daisy-white border border-rose-cream/20 text-soft-brown/85 hover:bg-rose-cream/10'
+                      : 'bg-daisy-white border border-rose-cream/20 text-soft-brown/80 hover:bg-rose-cream/10'
                   }`}
                 >
-                  {item.icon}
-                  {item.label}
+                  <Icon className="w-4 h-4" />
+                  {label}
                 </Link>
               );
             })}
           </nav>
         </aside>
 
-        {/* Content Area */}
-        <main className="flex-1 bg-daisy-white border border-rose-cream/35 rounded-3xl p-6 md:p-8 shadow-xs relative overflow-hidden">
+        {/* Content */}
+        <main className="flex-1 min-w-0 p-4 pb-28 md:pb-8 md:bg-daisy-white md:border md:border-rose-cream/35 md:rounded-3xl md:p-8 md:shadow-xs overflow-hidden">
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <nav
+        className="fixed bottom-0 inset-x-0 md:hidden bg-daisy-white/95 backdrop-blur border-t border-rose-cream/30 z-40"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="flex">
+          {NAV.map(({ label, href, Icon, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-bold transition ${
+                  active ? 'text-golden-honey' : 'text-soft-brown/40'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${active ? 'text-golden-honey' : 'text-soft-brown/35'}`} />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

@@ -9,38 +9,23 @@ interface Props {
   rsvpAnswered?: boolean;
 }
 
-// Tamanho de cada hexágono (largura da imagem PNG)
-const W = 40; // vw
-const H = W * 0.88; // vw  — proporção aproximada para hexágono flat-top com efeito mel
-
-// Posicionamento honeycomb:
-// Coluna direita deslocada 68% da largura do hex (hexágonos quase se encostando)
-const X_RIGHT = W * 0.68; // vw
-// Hex direito inferior começa a 82% da altura do hex acima (leve sobreposição do transparent)
-const Y_BOTTOM = H * 0.95; // vw
-// Hex esquerdo centralizado verticalmente entre os dois da direita
-const Y_LEFT = Y_BOTTOM / 2; // vw
-
-// Container
-const C_W = X_RIGHT + W;       // vw
-const C_H = Y_BOTTOM + H;      // vw
-
-// Flutuação dessincronizada por botão
 const floats = [
-  { y: [0, -2, 0], duration: 3.2 },
-  { y: [0, -2, 0], duration: 2.9 },
-  { y: [0, -2, 0], duration: 3.5 },
+  { y: [0, -3, 0], duration: 3.2 },
+  { y: [0, -3, 0], duration: 2.9 },
+  { y: [0, -3, 0], duration: 3.5 },
 ];
 
+const BTN_SIZE = 'clamp(110px, 36vw, 155px)';
+
 function HexBtn({
-  src, alt, x, y, onClick, floatIdx, delay, zIndex = 1, answered = false,
+  src, alt, onClick, floatIdx, delay, answered = false,
 }: {
-  src: string; alt: string; x: string; y: string;
-  onClick: () => void; floatIdx: number; delay: number; zIndex?: number; answered?: boolean;
+  src: string; alt: string;
+  onClick: () => void; floatIdx: number; delay: number; answered?: boolean;
 }) {
   return (
     <motion.div
-      style={{ position: 'absolute', left: x, top: y, width: `${W}vw`, maxWidth: 155, zIndex }}
+      style={{ width: BTN_SIZE, flexShrink: 0, position: 'relative' }}
       initial={{ opacity: 0, scale: 0.7 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay, duration: 0.55, ease: [0.34, 1.3, 0.64, 1] }}
@@ -50,7 +35,7 @@ function HexBtn({
         style={{ background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'pointer', position: 'relative' }}
         animate={{ y: floats[floatIdx].y }}
         transition={{ duration: floats[floatIdx].duration, repeat: Infinity, ease: 'easeInOut', delay }}
-        whileTap={{ scale: 0.94 }}
+        whileTap={{ scale: 0.93 }}
       >
         <img
           src={src}
@@ -94,48 +79,36 @@ function HexBtn({
 
 export default function InviteButtons({ onLocation, onRSVP, onGifts, rsvpAnswered = false }: Props) {
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: `min(${C_W}vw, ${155 * (C_W / W)}px)`,
-        height: `${C_H}vw`,
-        maxHeight: `${155 * 0.88 * (C_H / H)}px`,
-      }}
-    >
-      {/* Esquerda — Localização (centralizado verticalmente) */}
-      <HexBtn
-        src="/btn-location.png"
-        alt="Onde vai ser a Festinha?"
-        x="0"
-        y={`${Y_LEFT}vw`}
-        onClick={onLocation}
-        floatIdx={0}
-        delay={0.2}
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'clamp(0px, 0.5vw, 2px)', width: '100%' }}>
+      {/* Linha de cima — dois botões */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(0px, 0.5vw, 4px)' }}>
+        <HexBtn
+          src="/btn-location.png"
+          alt="Onde vai ser a Festinha?"
+          onClick={onLocation}
+          floatIdx={0}
+          delay={0.2}
+        />
+        <HexBtn
+          src="/btn-rsvp.png"
+          alt="Confirmar Presença"
+          onClick={onRSVP}
+          floatIdx={1}
+          delay={0.35}
+          answered={rsvpAnswered}
+        />
+      </div>
 
-      {/* Direita topo — Confirmar Presença (na frente) */}
-      <HexBtn
-        src="/btn-rsvp.png"
-        alt="Confirmar Presença"
-        x={`${X_RIGHT}vw`}
-        y="0"
-        onClick={onRSVP}
-        floatIdx={1}
-        delay={0.35}
-        zIndex={3}
-        answered={rsvpAnswered}
-      />
-
-      {/* Direita base — O que a Zoe Ama */}
-      <HexBtn
-        src="/btn-gifts.png"
-        alt="O que a Zoe Ama"
-        x={`${X_RIGHT}vw`}
-        y={`${Y_BOTTOM}vw`}
-        onClick={onGifts}
-        floatIdx={2}
-        delay={0.5}
-      />
+      {/* Linha de baixo — um botão centralizado */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-28px' }}>
+        <HexBtn
+          src="/btn-gifts.png"
+          alt="A Zoe ia Amar!"
+          onClick={onGifts}
+          floatIdx={2}
+          delay={0.5}
+        />
+      </div>
     </div>
   );
 }

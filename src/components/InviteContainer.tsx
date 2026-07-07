@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import BackgroundScene from './scene/BackgroundScene';
+import { EVENT } from '@/lib/eventInfo';
 import InviteText from './InviteText';
 import InviteButtons from './InviteButtons';
 import SceneParticles from './scene/SceneParticles';
@@ -63,7 +64,8 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
     if (invite) {
       invite.style.transition = 'opacity 0.8s ease-out';
       invite.style.opacity = '1';
-      invite.style.pointerEvents = 'auto';
+      // Aguarda a intro sumir antes de habilitar cliques — evita clique acidental nos botões
+      setTimeout(() => { invite.style.pointerEvents = 'auto'; }, 1600);
     }
   }
 
@@ -125,6 +127,30 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
             Olá, {family.name}!
           </p>
 
+          {/* Data do evento */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'rgba(0,0,0,0.35)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            borderRadius: 999,
+            padding: '7px 18px',
+            marginBottom: 20,
+            pointerEvents: 'none',
+          }}>
+            <span style={{ fontSize: 15 }}>🗓️</span>
+            <span style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 'clamp(12px, 3.5vw, 15px)', color: '#fff', letterSpacing: '0.03em' }}>
+              {EVENT.dateShort}
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>·</span>
+            <span style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 'clamp(12px, 3.5vw, 15px)', color: '#FFD95A', letterSpacing: '0.03em' }}>
+              {EVENT.time}
+            </span>
+          </div>
+
           <button
             ref={btnRef}
             type="button"
@@ -169,16 +195,6 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
       >
         <BackgroundScene />
         <SceneParticles />
-
-        <motion.div
-          className="fixed pointer-events-none select-none"
-          style={{ top: '49vh', left: 'clamp(18px, 5vw, 30px)', width: 'clamp(90px, 26vw, 130px)', zIndex: 45 }}
-          animate={{ x: [0, 8, 0, -6, 0], y: [0, -10, -4, 4, 0], rotate: [-5, 3, -2, 4, -5] }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <img src="/bee.png" alt="" draggable={false} className="w-full h-full object-contain"
-            style={{ filter: 'drop-shadow(0 4px 12px rgba(234,183,93,0.5))' }} />
-        </motion.div>
 
         <div
           className="relative flex flex-col items-center"

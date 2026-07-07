@@ -1,12 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { EVENT } from '@/lib/eventInfo';
 
 export default function InviteText() {
   return (
     <motion.div
       className="w-full flex flex-col items-center text-center"
-      style={{ paddingLeft: 'clamp(28px, 8vw, 48px)', paddingRight: 'clamp(52px, 22vw, 90px)' }}
+      style={{ paddingLeft: 'clamp(24px, 7vw, 44px)', paddingRight: 'clamp(24px, 7vw, 44px)' }}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4, duration: 0.8, ease: [0.34, 1.1, 0.64, 1] }}
@@ -51,6 +52,43 @@ export default function InviteText() {
         <em style={{ color: '#E8891A' }}>sua presença</em>{' '}
         para celebrar essa data tão especial 🌸
       </motion.p>
+
+      {/* Data e hora do evento */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+        style={{
+          marginTop: 'clamp(14px, 3.5vh, 22px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'linear-gradient(135deg, rgba(255,217,90,0.22) 0%, rgba(232,137,26,0.15) 100%)',
+          border: '1.5px solid rgba(232,137,26,0.38)',
+          borderRadius: 999,
+          padding: '10px 20px',
+          boxShadow: '0 2px 12px rgba(232,137,26,0.1)',
+        }}>
+          <span style={{ fontFamily: 'var(--font-outfit)', fontWeight: 700, fontSize: 'clamp(13px, 3.8vw, 15px)', color: '#3D1800' }}>
+            {EVENT.dateShort}
+          </span>
+          <span style={{ color: 'rgba(184,101,10,0.4)', fontWeight: 300, fontSize: 14 }}>·</span>
+          <span style={{ fontFamily: 'var(--font-outfit)', fontWeight: 600, fontSize: 'clamp(12px, 3.4vw, 14px)', color: '#B8650A' }}>
+            {EVENT.weekday}
+          </span>
+          <span style={{ color: 'rgba(184,101,10,0.4)', fontWeight: 300, fontSize: 14 }}>·</span>
+          <span style={{ fontFamily: 'var(--font-outfit)', fontWeight: 800, fontSize: 'clamp(13px, 3.8vw, 15px)', color: '#E8891A' }}>
+            {EVENT.time}
+          </span>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
