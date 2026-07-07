@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import ChromaKeyVideo from './ChromaKeyVideo';
 
 interface Props {
   open: boolean;
@@ -63,16 +64,32 @@ export default function LocationModal({ open, onClose }: Props) {
             </div>
 
             {/* Venue info */}
-            <div
-              className="mx-4 mb-3 px-4 py-3 flex flex-col items-center gap-1 text-center"
-              style={{ background: 'rgba(245,166,35,0.12)', borderRadius: 14, border: '1px solid rgba(245,166,35,0.3)' }}
-            >
-              <p style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(15px, 4.2vw, 18px)', fontWeight: 700, color: '#3D1800' }}>
-                Casa de Festas Mariana
-              </p>
-              <p style={{ fontFamily: 'var(--font-outfit)', fontSize: 'clamp(12px, 3.3vw, 14px)', color: '#7A4200', lineHeight: 1.5 }}>
-                {ADDRESS}
-              </p>
+            <div style={{ position: 'relative', margin: '0 16px 12px' }}>
+              {/* Abelha peeking acima do card — cortada na cintura */}
+              <div style={{
+                position: 'absolute',
+                width: 130,
+                right: 24,
+                bottom: '100%',
+                zIndex: 2,
+                pointerEvents: 'none',
+                overflow: 'hidden',
+                height: 68,
+              }}>
+                <ChromaKeyVideo src="/BeerAtencion.mp4" loop style={{ width: '100%' }} />
+              </div>
+
+              <div
+                className="px-4 py-3 flex flex-col items-center gap-1 text-center"
+                style={{ background: 'rgba(245,166,35,0.12)', borderRadius: 14, border: '1px solid rgba(245,166,35,0.3)' }}
+              >
+                <p style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(15px, 4.2vw, 18px)', fontWeight: 700, color: '#3D1800' }}>
+                  Casa de Festas Mariana
+                </p>
+                <p style={{ fontFamily: 'var(--font-outfit)', fontSize: 'clamp(12px, 3.3vw, 14px)', color: '#7A4200', lineHeight: 1.5 }}>
+                  {ADDRESS}
+                </p>
+              </div>
             </div>
 
             {/* Map */}
