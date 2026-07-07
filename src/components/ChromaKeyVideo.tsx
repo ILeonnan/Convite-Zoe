@@ -59,11 +59,13 @@ export default function ChromaKeyVideo({ src, onEnded, loop = false, style }: Pr
         const r = d[i], g = d[i + 1], b = d[i + 2];
         // Greenness: quanto o verde domina sobre vermelho e azul
         const greenness = 2 * g - r - b;
-        if (greenness > 30 && g > 40) {
-          const strength = Math.min(1, (greenness - 30) / 60);
+        // g > r garante que só pixels onde o verde domina o vermelho são removidos
+        // protege as cores quentes da abelha (amarelo/laranja onde r ≈ g ou r > g)
+        if (greenness > 40 && g > 50 && g > r) {
+          const strength = Math.min(1, (greenness - 40) / 70);
           d[i + 3] = Math.round((1 - strength) * 255);
           if (strength < 1) {
-            d[i + 1] = Math.round(g * (1 - strength * 0.6));
+            d[i + 1] = Math.round(g * (1 - strength * 0.5));
           }
         }
       }
