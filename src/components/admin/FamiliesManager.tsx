@@ -135,7 +135,7 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
 
   // Flat guest list
   const flatGuests = families.flatMap((f) =>
-    f.guests.map((g) => ({ ...g, familyName: f.name, familyStatus: f.status }))
+    f.guests.map((g) => ({ ...g, familyName: f.name, familyStatus: f.status, familySize: f.guests.length }))
   ).filter((g) => {
     const q = search.toLowerCase();
     const matchSearch = g.name.toLowerCase().includes(q) || g.familyName.toLowerCase().includes(q);
@@ -408,7 +408,9 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                     <p className="text-sm font-semibold text-soft-brown truncate">{g.name}</p>
                     <p className="text-[10px] text-soft-brown/45 truncate">
                       {g.type === 'child' ? 'Criança' : g.type === 'baby' ? 'Bebê' : 'Adulto'}
-                      {g.familyName !== g.name && <span className="ml-1.5">· convite de <span className="font-medium">{g.familyName}</span></span>}
+                      {g.familySize > 1 && g.familyName !== g.name && (
+                        <span className="ml-1.5">· com <span className="font-medium">{g.familyName.replace(/^famíli[ao](\s+de)?\s+/i, '')}</span></span>
+                      )}
                     </p>
                   </div>
                   {g.status === 'confirmed' ? (
