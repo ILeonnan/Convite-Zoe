@@ -338,10 +338,10 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
         </select>
       </div>
 
-      {/* ── MOBILE: Cards ── */}
-      <div className="md:hidden space-y-3">
+      {/* ── Lista de Convidados ── */}
+      <div className="space-y-2.5">
         {filtered.length === 0 && (
-          <p className="text-center text-soft-brown/40 italic py-10 text-sm">Nenhuma família encontrada.</p>
+          <p className="text-center text-soft-brown/40 italic py-10 text-sm">Nenhum convidado encontrado.</p>
         )}
         {filtered.map((fam) => {
           const isExpanded = expandedId === fam.id;
@@ -351,182 +351,120 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
 
           return (
             <div key={fam.id} className="bg-white/70 border border-rose-cream/25 rounded-2xl overflow-hidden shadow-xs">
-              {/* Top row */}
-              <div className="flex items-center justify-between px-4 pt-3.5 pb-2 gap-2">
-                <div className="min-w-0">
-                  <p className="font-bold text-soft-brown text-sm truncate">{fam.name}</p>
-                  <p className="text-[11px] text-soft-brown/50 truncate">{fam.responsible} · {fam.phone}</p>
-                </div>
-                <StatusBadge status={fam.status} />
-              </div>
 
-              {/* Metrics row */}
-              <div className="flex items-center gap-3 px-4 py-2 border-t border-rose-cream/15">
-                {METRICS.map((m) => (
-                  <div key={m.key} className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm leading-none">{m.emoji}</span>
-                    <MetricDot count={ev[m.key] || 0} binary={m.binary} />
+              {/* ── Linha principal ── */}
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold text-soft-brown text-sm leading-tight">{fam.name}</p>
+                    <StatusBadge status={fam.status} />
                   </div>
-                ))}
-                <div className="ml-auto text-[11px] text-soft-brown/50 font-semibold whitespace-nowrap">
-                  {confirmed}/{fam.guests.length} ✓
+                  <p className="text-[11px] text-soft-brown/50 mt-0.5 truncate">
+                    {fam.phone}
+                    {fam.guests.length > 0 && (
+                      <span className="ml-2 font-semibold text-soft-brown/60">
+                        · {confirmed}/{fam.guests.length} {fam.guests.length === 1 ? 'confirmado' : 'confirmados'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Ações rápidas */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={() => handleWhatsApp(fam, false)} title="Enviar Convite"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+                    <MessageCircle className="w-3 h-3" />
+                    <span className="hidden sm:inline">Enviar</span>
+                  </button>
+                  {canRemind && (
+                    <button onClick={() => handleWhatsApp(fam, true)} title="Lembrete"
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+                      <Bell className="w-3 h-3" />
+                      <span className="hidden sm:inline">Lembrar</span>
+                    </button>
+                  )}
+                  <button onClick={() => handleCopyLink(fam.token)} title="Copiar link"
+                    className="p-1.5 bg-white border border-rose-cream/30 hover:bg-rose-cream/10 text-soft-brown/60 rounded-lg cursor-pointer">
+                    {copiedToken === fam.token ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                  {(fam.status === 'confirmed' || fam.status === 'declined') && (
+                    <button onClick={() => handleResetConfirmation(fam.id, fam.name)} title="Liberar reconfirmação"
+                      className="p-1.5 bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-600 rounded-lg cursor-pointer">
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button onClick={() => handleDelete(fam.id)} title="Excluir"
+                    className="p-1.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 rounded-lg cursor-pointer">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  {/* Expandir */}
+                  <button onClick={() => setExpandedId(isExpanded ? null : fam.id)}
+                    className="p-1.5 bg-vanilla-white border border-rose-cream/30 hover:bg-rose-cream/15 text-soft-brown/40 rounded-lg cursor-pointer">
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
 
-              {/* Guest roster */}
-              <div className="px-4 py-2.5 border-t border-rose-cream/15">
-                <GuestRoster guests={fam.guests} />
-              </div>
-
-              {/* Actions row */}
-              <div className="flex items-center gap-2 px-4 py-2.5 border-t border-rose-cream/15 bg-vanilla-white/30">
-                <button onClick={() => handleWhatsApp(fam, false)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition cursor-pointer">
-                  <MessageCircle className="w-3.5 h-3.5" /> Enviar
-                </button>
-                {canRemind && (
-                  <button onClick={() => handleWhatsApp(fam, true)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition cursor-pointer">
-                    <Bell className="w-3.5 h-3.5" /> Lembrar
-                  </button>
-                )}
-                <button onClick={() => handleCopyLink(fam.token)}
-                  className="p-2 bg-white border border-rose-cream/30 hover:bg-rose-cream/10 text-soft-brown/70 rounded-xl cursor-pointer">
-                  {copiedToken === fam.token ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-                <button onClick={() => handleDelete(fam.id)}
-                  className="p-2 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 rounded-xl cursor-pointer">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-                {(fam.status === 'confirmed' || fam.status === 'declined') && (
-                  <button onClick={() => handleResetConfirmation(fam.id, fam.name)} title="Liberar reconfirmação"
-                    className="p-2 bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-600 rounded-xl cursor-pointer">
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                <button onClick={() => setExpandedId(isExpanded ? null : fam.id)}
-                  className="p-2 bg-white border border-rose-cream/30 text-soft-brown/50 rounded-xl cursor-pointer">
-                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-
-              {/* Expandable guests */}
+              {/* ── Painel expandido ── */}
               {isExpanded && (
-                <div className="px-4 py-3 bg-vanilla-white/50 border-t border-rose-cream/15 space-y-2">
-                  <p className="text-[10px] font-bold text-soft-brown/50 uppercase tracking-wider">Integrantes</p>
-                  {fam.guests.map((g) => (
-                    <div key={g.id} className="flex justify-between items-center py-1.5 border-b border-rose-cream/10 last:border-0">
-                      <div>
-                        <p className="text-xs font-semibold text-soft-brown">{g.name}</p>
-                        <p className="text-[9px] text-soft-brown/40 uppercase tracking-widest">
-                          {g.type === 'child' ? 'Criança' : g.type === 'baby' ? 'Bebê' : 'Adulto'}
-                        </p>
-                      </div>
-                      {g.status === 'confirmed' ? (
-                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Vai ✓</span>
-                      ) : g.status === 'declined' ? (
-                        <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">Não vai</span>
-                      ) : (
-                        <span className="text-[9px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Pendente</span>
-                      )}
+                <div className="border-t border-rose-cream/15 bg-vanilla-white/40 divide-y divide-rose-cream/10">
+
+                  {/* Métricas */}
+                  <div className="px-4 py-3 space-y-1.5">
+                    <p className="text-[10px] font-bold text-soft-brown/45 uppercase tracking-wider mb-2">Engajamento</p>
+                    {METRICS.map((m) => {
+                      const count = ev[m.key] || 0;
+                      return (
+                        <div key={m.key} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base leading-none w-5 text-center">{m.emoji}</span>
+                            <span className="text-xs text-soft-brown/70">{m.label}</span>
+                          </div>
+                          {count === 0 ? (
+                            <span className="text-[11px] text-soft-brown/25 font-semibold">–</span>
+                          ) : m.binary ? (
+                            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">✓ Sim</span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-golden-honey bg-honey-yellow/20 px-2 py-0.5 rounded-full">
+                              {count > 9 ? '9+' : count}× acessou
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Convidados */}
+                  {fam.guests.length > 0 && (
+                    <div className="px-4 py-3 space-y-1.5">
+                      <p className="text-[10px] font-bold text-soft-brown/45 uppercase tracking-wider mb-2">
+                        Convidados ({fam.guests.length})
+                      </p>
+                      {fam.guests.map((g) => (
+                        <div key={g.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-soft-brown/30 w-12 shrink-0">
+                              {g.type === 'child' ? 'Criança' : g.type === 'baby' ? 'Bebê' : 'Adulto'}
+                            </span>
+                            <span className="text-xs font-semibold text-soft-brown">{g.name}</span>
+                          </div>
+                          {g.status === 'confirmed' ? (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Vai ✓</span>
+                          ) : g.status === 'declined' ? (
+                            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">Não vai</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Pendente</span>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
           );
         })}
-      </div>
-
-      {/* ── DESKTOP: Table ── */}
-      <div className="hidden md:block border border-rose-cream/25 rounded-2xl overflow-hidden bg-white/40">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-vanilla-white/70 text-soft-brown/55 uppercase tracking-wider font-bold border-b border-rose-cream/20">
-                <th className="p-3 w-8"></th>
-                <th className="p-3">Família / Responsável</th>
-                <th className="p-3">Telefone</th>
-                <th className="p-3">Status</th>
-                {METRICS.map((m) => (
-                  <th key={m.key} className="p-3 text-center whitespace-nowrap">
-                    <span className="block">{m.emoji}</span>
-                    <span className="text-[9px]">{m.label}</span>
-                  </th>
-                ))}
-                <th className="p-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={10} className="p-8 text-center text-soft-brown/40 italic">Nenhuma família encontrada.</td></tr>
-              ) : filtered.map((fam) => {
-                const isExpanded = expandedId === fam.id;
-                const ev = evMap[fam.id] || {};
-                const confirmed = fam.guests.filter((g) => g.status === 'confirmed').length;
-                const canRemind = fam.status === 'sent' || fam.status === 'opened';
-
-                return (
-                  <>
-                    <tr key={fam.id} className={`border-b border-rose-cream/15 hover:bg-rose-cream/5 transition-colors ${isExpanded ? 'bg-rose-cream/5' : ''}`}>
-                      <td className="p-3 text-center">
-                        <button onClick={() => setExpandedId(isExpanded ? null : fam.id)} className="text-soft-brown/40 hover:text-golden-honey cursor-pointer">
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <p className="font-bold text-soft-brown">{fam.name}</p>
-                        <p className="text-[10px] text-soft-brown/45">{fam.responsible} · {confirmed}/{fam.guests.length} confirmados</p>
-                      </td>
-                      <td className="p-3 text-soft-brown/80 font-semibold">{fam.phone}</td>
-                      <td className="p-3"><StatusBadge status={fam.status} /></td>
-                      {METRICS.map((m) => (
-                        <td key={m.key} className="p-3 text-center">
-                          <MetricDot count={ev[m.key] || 0} binary={m.binary} />
-                        </td>
-                      ))}
-                      <td className="p-3">
-                        <div className="flex justify-end gap-1.5">
-                          <button onClick={() => handleWhatsApp(fam, false)} title="Enviar Convite"
-                            className="p-1.5 bg-emerald-50 border border-emerald-100 hover:bg-emerald-100 text-emerald-700 rounded-lg cursor-pointer">
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                          {canRemind && (
-                            <button onClick={() => handleWhatsApp(fam, true)} title="Enviar Lembrete"
-                              className="p-1.5 bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-700 rounded-lg cursor-pointer">
-                              <Bell className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button onClick={() => handleCopyLink(fam.token)} title="Copiar Link"
-                            className="p-1.5 bg-vanilla-white border border-rose-cream/35 hover:bg-rose-cream/20 text-soft-brown/70 rounded-lg cursor-pointer">
-                            {copiedToken === fam.token ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                          <button onClick={() => handleDelete(fam.id)} title="Excluir"
-                            className="p-1.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 rounded-lg cursor-pointer">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                          {(fam.status === 'confirmed' || fam.status === 'declined') && (
-                            <button onClick={() => handleResetConfirmation(fam.id, fam.name)} title="Liberar reconfirmação"
-                              className="p-1.5 bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-600 rounded-lg cursor-pointer">
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="bg-vanilla-white/20 border-b border-rose-cream/15">
-                        <td colSpan={10} className="p-4 pl-10">
-                          <GuestRoster guests={fam.guests} />
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* ── MODAL: Adicionar ── */}
