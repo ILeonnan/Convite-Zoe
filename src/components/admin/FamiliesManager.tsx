@@ -107,6 +107,7 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [responsible, setResponsible] = useState('');
   const [phone, setPhone] = useState('');
@@ -123,13 +124,23 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
     evMap[ev.family_id][ev.event_type] = (evMap[ev.family_id][ev.event_type] || 0) + 1;
   }
 
-  // Filtered list
+  // Filtered list (grouped)
   const filtered = families.filter((f) => {
     const q = search.toLowerCase();
     const matchSearch = f.name.toLowerCase().includes(q) ||
       f.responsible.toLowerCase().includes(q) ||
       f.guests.some((g) => g.name.toLowerCase().includes(q));
     return matchSearch && (filterStatus === 'all' || f.status === filterStatus);
+  });
+
+  // Flat guest list
+  const flatGuests = families.flatMap((f) =>
+    f.guests.map((g) => ({ ...g, familyName: f.name, familyStatus: f.status }))
+  ).filter((g) => {
+    const q = search.toLowerCase();
+    const matchSearch = g.name.toLowerCase().includes(q) || g.familyName.toLowerCase().includes(q);
+    const matchStatus = filterStatus === 'all' || g.status === filterStatus;
+    return matchSearch && matchStatus;
   });
 
   // Handlers
@@ -319,27 +330,103 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
         </button>
       </div>
 
-      {/* Search + filter */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-soft-brown/35 absolute left-3 top-2.5" />
-          <input type="text" placeholder="Buscar família ou pessoa..." value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 bg-white/60 border border-rose-cream/30 rounded-xl text-xs focus:outline-none focus:border-golden-honey text-soft-brown" />
+      {/* View toggle + search + filter */}
+      <div className="space-y-2">
+        {/* Toggle agrupado / individual */}
+        <div className="flex gap-1 p-1 bg-vanilla-white/70 border border-rose-cream/25 rounded-xl w-fit">
+          <button
+            onClick={() => setViewMode('grouped')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              viewMode === 'grouped'
+                ? 'bg-golden-honey text-white shadow-sm'
+                : 'text-soft-brown/55 hover:text-soft-brown'
+            }`}
+          >
+            Por convite
+          </button>
+          <button
+            onClick={() => setViewMode('flat')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              viewMode === 'flat'
+                ? 'bg-golden-honey text-white shadow-sm'
+                : 'text-soft-brown/55 hover:text-soft-brown'
+            }`}
+          >
+            Individual
+          </button>
         </div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-2.5 py-2 bg-white/60 border border-rose-cream/30 rounded-xl text-xs text-soft-brown font-semibold focus:outline-none focus:border-golden-honey">
-          <option value="all">Todos</option>
-          <option value="pending">Pendentes</option>
-          <option value="sent">Enviados</option>
-          <option value="opened">Abriram</option>
-          <option value="confirmed">Confirmados</option>
-          <option value="declined">Recusados</option>
-        </select>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 text-soft-brown/35 absolute left-3 top-2.5" />
+            <input type="text" placeholder="Buscar por nome..." value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 bg-white/60 border border-rose-cream/30 rounded-xl text-xs focus:outline-none focus:border-golden-honey text-soft-brown" />
+          </div>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-2.5 py-2 bg-white/60 border border-rose-cream/30 rounded-xl text-xs text-soft-brown font-semibold focus:outline-none focus:border-golden-honey">
+            <option value="all">Todos</option>
+            {viewMode === 'flat' ? (
+              <>
+                <option value="confirmed">Confirmados</option>
+                <option value="declined">Não vão</option>
+                <option value="pending">Pendentes</option>
+              </>
+            ) : (
+              <>
+                <option value="pending">Pendentes</option>
+                <option value="sent">Enviados</option>
+                <option value="opened">Abriram</option>
+                <option value="confirmed">Confirmados</option>
+                <option value="declined">Recusados</option>
+              </>
+            )}
+          </select>
+        </div>
       </div>
 
-      {/* ── Lista de Convidados ── */}
-      <div className="space-y-2.5">
+      {/* ── Vista Individual (flat) ── */}
+      {viewMode === 'flat' && (
+        <div className="border border-rose-cream/25 rounded-2xl overflow-hidden bg-white/40">
+          {flatGuests.length === 0 ? (
+            <p className="text-center text-soft-brown/40 italic py-10 text-sm">Nenhum convidado encontrado.</p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between px-4 py-2.5 bg-vanilla-white/70 border-b border-rose-cream/15">
+                <span className="text-[10px] font-bold text-soft-brown/45 uppercase tracking-wider">
+                  {flatGuests.length} convidado{flatGuests.length !== 1 ? 's' : ''}
+                </span>
+                <span className="text-[10px] text-soft-brown/40">
+                  {flatGuests.filter(g => g.status === 'confirmed').length} confirmados ·{' '}
+                  {flatGuests.filter(g => g.status === 'declined').length} não vão ·{' '}
+                  {flatGuests.filter(g => g.status === 'pending').length} pendentes
+                </span>
+              </div>
+              {flatGuests.map((g, i) => (
+                <div key={g.id} className={`flex items-center gap-3 px-4 py-2.5 ${i !== flatGuests.length - 1 ? 'border-b border-rose-cream/10' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-soft-brown truncate">{g.name}</p>
+                    <p className="text-[10px] text-soft-brown/45 truncate">
+                      {g.type === 'child' ? 'Criança' : g.type === 'baby' ? 'Bebê' : 'Adulto'}
+                      {g.familyName !== g.name && <span className="ml-1.5">· convite de <span className="font-medium">{g.familyName}</span></span>}
+                    </p>
+                  </div>
+                  {g.status === 'confirmed' ? (
+                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full whitespace-nowrap">✓ Vai</span>
+                  ) : g.status === 'declined' ? (
+                    <span className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-full whitespace-nowrap">Não vai</span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-full whitespace-nowrap">Pendente</span>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Lista Agrupada por Convite ── */}
+      {viewMode === 'grouped' && <div className="space-y-2.5">
         {filtered.length === 0 && (
           <p className="text-center text-soft-brown/40 italic py-10 text-sm">Nenhum convidado encontrado.</p>
         )}
@@ -465,7 +552,7 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {/* ── MODAL: Adicionar ── */}
       {showAddModal && (
