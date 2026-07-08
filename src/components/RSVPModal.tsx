@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
   familyId: string;
   guests: Guest[];
-  onComplete?: () => void;
+  onComplete?: (responses: Record<string, 'confirmed' | 'declined'>) => void;
 }
 
 export default function RSVPModal({ open, onClose, familyId, guests, onComplete }: Props) {

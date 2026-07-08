@@ -83,6 +83,8 @@ export async function updateConfirmationAction(
     // Log that confirmation completed
     await trackEvent(familyId, 'confirmation_completed');
 
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
     return { success: true };
   } catch (err) {
     console.error('updateConfirmationAction error:', err);

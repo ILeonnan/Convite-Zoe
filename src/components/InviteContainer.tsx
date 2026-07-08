@@ -38,6 +38,7 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
   const [showLocation, setShowLocation] = useState(false);
   const [showRSVP, setShowRSVP] = useState(false);
   const [showGifts, setShowGifts] = useState(false);
+  const [localGuests, setLocalGuests] = useState<Guest[]>(guests);
   const [hasAnswered, setHasAnswered] = useState(() => guests.every((g) => g.status !== 'pending'));
   const introRef = useRef<HTMLDivElement>(null);
   const inviteRef = useRef<HTMLDivElement>(null);
@@ -124,7 +125,7 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
             className="font-title italic font-extrabold text-center mb-4"
             style={{ fontSize: 'clamp(20px, 6vw, 28px)', color: '#fff', textShadow: '0 2px 12px rgba(0,0,0,0.4), 0 0 40px rgba(248,214,109,0.6)', pointerEvents: 'none' }}
           >
-            Olá, {family.name}!
+            Olá, {family.name.replace(/^famíli[ao]\s+/i, '')}!
           </p>
 
           {/* Data do evento */}
@@ -222,8 +223,16 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
             open={showRSVP}
             onClose={() => setShowRSVP(false)}
             familyId={family.id}
-            guests={guests}
-            onComplete={() => setHasAnswered(true)}
+            guests={localGuests}
+            onComplete={(responses) => {
+              setHasAnswered(true);
+              setLocalGuests((prev) =>
+                prev.map((g) => ({
+                  ...g,
+                  status: responses[g.id] ?? g.status,
+                }))
+              );
+            }}
           />
         </div>
       </div>

@@ -18,7 +18,7 @@ interface Guest {
 interface ConfirmationFormProps {
   familyId: string;
   initialGuests: Guest[];
-  onComplete?: () => void;
+  onComplete?: (responses: Record<string, 'confirmed' | 'declined'>) => void;
 }
 
 const typeLabel: Record<string, string> = {
@@ -118,7 +118,7 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
     setIsSubmitting(false);
     if (result.success) {
       const anyoneConfirmed = Object.values(responsesMap).some((s) => s === 'confirmed');
-      onComplete?.();
+      onComplete?.(responsesMap);
       setStep('success');
       if (anyoneConfirmed) {
         setShowCelebration(true);

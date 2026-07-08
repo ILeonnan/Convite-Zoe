@@ -1,9 +1,71 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Trash2, AlertTriangle } from 'lucide-react';
+import { Settings, Trash2, AlertTriangle, Copy, Check, MessageCircle, Bell } from 'lucide-react';
 import { clearAllDataAction } from '@/app/actions';
 import { useRouter } from 'next/navigation';
+
+const INVITE_TEMPLATE = `Olá, *{nome}*! Tudo bem? 🐝
+Estamos muito felizes em convidar vocês para comemorar o primeiro aninho da Zoe!
+Preparamos um convite personalizado e interativo para vocês:
+
+{link}
+
+Esperamos vocês na nossa doce colmeia! 🍯🌼`;
+
+const REMINDER_TEMPLATE = `Olá, *{nome}*! Passando para lembrar de confirmar a presença para o primeiro aninho da Zoe. 🌼
+
+{link}
+
+Se puder nos responder até dia 10 de Agosto, agradecemos muito! 🐝`;
+
+function TemplateCard({ title, icon, template }: { title: string; icon: React.ReactNode; template: string }) {
+  const [preview, setPreview] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const rendered = template
+    .replace('{nome}', preview || '{nome}')
+    .replace('{link}', 'https://zoe1-aninho.vercel.app/invite/TOKEN');
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(rendered);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="border border-rose-cream/30 rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 bg-vanilla-white/60 border-b border-rose-cream/20">
+        {icon}
+        <span className="text-sm font-bold text-soft-brown">{title}</span>
+      </div>
+      <div className="p-4 space-y-3">
+        <div>
+          <label className="block text-[10px] font-bold text-soft-brown/50 uppercase tracking-wider mb-1">
+            Prévia com nome do convidado:
+          </label>
+          <input
+            type="text"
+            value={preview}
+            onChange={(e) => setPreview(e.target.value)}
+            placeholder="Ex: Ana Silva"
+            className="w-full px-3 py-2 bg-white border border-rose-cream/30 rounded-xl text-xs text-soft-brown focus:outline-none focus:border-golden-honey"
+          />
+        </div>
+        <pre className="whitespace-pre-wrap text-xs text-soft-brown/80 bg-vanilla-white/80 border border-rose-cream/20 rounded-xl p-3 font-[inherit] leading-relaxed">
+          {rendered}
+        </pre>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-2 px-4 py-2 bg-golden-honey hover:brightness-105 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'Copiado!' : 'Copiar mensagem'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -32,11 +94,24 @@ export default function ConfiguracoesPage() {
         <p className="text-xs text-soft-brown/65 mt-0.5">Templates de mensagem e preferências do sistema.</p>
       </div>
 
-      {/* Em construção */}
-      <div className="flex flex-col items-center justify-center py-10 gap-3 border border-dashed border-rose-cream/40 rounded-2xl bg-vanilla-white/30">
-        <Settings className="w-8 h-8 text-golden-honey/50" />
-        <p className="text-sm font-bold text-soft-brown/50">Templates em construção</p>
-        <p className="text-xs text-soft-brown/40">Personalização das mensagens de convite e lembrete em breve.</p>
+      {/* Templates de mensagem */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-soft-brown">Mensagens WhatsApp</h3>
+          <p className="text-xs text-soft-brown/55 mt-0.5">
+            Copie a mensagem e envie pelo WhatsApp. O link é gerado automaticamente na tela de Convidados ao clicar em Enviar ou Lembrar.
+          </p>
+        </div>
+        <TemplateCard
+          title="Convite"
+          icon={<MessageCircle className="w-4 h-4 text-emerald-600" />}
+          template={INVITE_TEMPLATE}
+        />
+        <TemplateCard
+          title="Lembrete"
+          icon={<Bell className="w-4 h-4 text-amber-500" />}
+          template={REMINDER_TEMPLATE}
+        />
       </div>
 
       {/* Zona de perigo */}

@@ -108,10 +108,9 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
   const [showImportModal, setShowImportModal] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
-  const [familyName, setFamilyName] = useState('');
   const [responsible, setResponsible] = useState('');
   const [phone, setPhone] = useState('');
-  const [guestInputs, setGuestInputs] = useState<{ name: string; type: 'adult' | 'child' | 'baby' }[]>([{ name: '', type: 'adult' }]);
+  const [guestInputs, setGuestInputs] = useState<{ name: string; type: 'adult' | 'child' | 'baby' }[]>([]);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState('');
@@ -168,13 +167,14 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
 
   const handleCreateFamily = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!responsible.trim() || !phone.trim()) return alert('Responsável e Telefone são obrigatórios!');
-    const finalName = familyName.trim() || `Família de ${responsible.trim()}`;
-    const validGuests = guestInputs.filter((g) => g.name.trim());
-    const res = await addFamilyAction(finalName, responsible, phone, validGuests);
+    if (!responsible.trim() || !phone.trim()) return alert('Nome e Telefone são obrigatórios!');
+    const extras = guestInputs.filter((g) => g.name.trim());
+    // O responsável é automaticamente o primeiro convidado adulto
+    const allGuests = [{ name: responsible.trim(), type: 'adult' as const }, ...extras];
+    const res = await addFamilyAction(responsible.trim(), responsible.trim(), phone, allGuests);
     if (res.success) {
-      setShowAddModal(false); setFamilyName(''); setResponsible(''); setPhone('');
-      setGuestInputs([{ name: '', type: 'adult' }]);
+      setShowAddModal(false); setResponsible(''); setPhone('');
+      setGuestInputs([]);
       setTimeout(() => window.location.reload(), 500);
     } else alert(res.error || 'Erro ao adicionar.');
   };
@@ -534,13 +534,13 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
         <div className="fixed inset-0 bg-black/30 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
           <div className="bg-daisy-white border border-rose-cream/40 w-full sm:max-w-md p-6 rounded-t-3xl sm:rounded-3xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-rose-cream/20 pb-3">
-              <h3 className="font-title text-lg font-bold text-soft-brown">Nova Família</h3>
+              <h3 className="font-title text-lg font-bold text-soft-brown">Novo Convidado</h3>
               <button onClick={() => setShowAddModal(false)} className="text-soft-brown/50 hover:text-soft-brown cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleCreateFamily} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-soft-brown/60 uppercase mb-1">Responsável *</label>
-                <input type="text" required value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="João Silva"
+                <label className="block font-bold text-soft-brown/60 uppercase mb-1">Nome do Convidado *</label>
+                <input type="text" required value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Ana Silva"
                   className="w-full p-2.5 bg-vanilla-white/60 border border-rose-cream/35 rounded-xl" />
               </div>
               <div>
@@ -548,14 +548,12 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                 <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="21999998888"
                   className="w-full p-2.5 bg-vanilla-white/60 border border-rose-cream/35 rounded-xl" />
               </div>
-              <div>
-                <label className="block font-bold text-soft-brown/60 uppercase mb-1">Apelido da Família (opcional)</label>
-                <input type="text" value={familyName} onChange={(e) => setFamilyName(e.target.value)} placeholder="Família Silva"
-                  className="w-full p-2.5 bg-vanilla-white/60 border border-rose-cream/35 rounded-xl" />
-              </div>
               <div className="border-t border-rose-cream/15 pt-3 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-soft-brown/60 uppercase tracking-wide">Integrantes</span>
+                  <div>
+                    <span className="font-bold text-soft-brown/60 uppercase tracking-wide">Acompanhantes</span>
+                    <span className="ml-1.5 text-soft-brown/35 normal-case font-normal">(opcional)</span>
+                  </div>
                   <button type="button" onClick={() => setGuestInputs([...guestInputs, { name: '', type: 'adult' }])}
                     className="py-1 px-2.5 bg-vanilla-white border border-rose-cream/35 hover:bg-rose-cream/25 rounded-lg text-[10px] font-bold text-soft-brown cursor-pointer">
                     + Adicionar
@@ -563,7 +561,7 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                 </div>
                 {guestInputs.map((g, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <input type="text" required placeholder="Nome" value={g.name}
+                    <input type="text" placeholder="Nome" value={g.name}
                       onChange={(e) => setGuestInputs(guestInputs.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
                       className="flex-1 p-2 bg-vanilla-white/60 border border-rose-cream/30 rounded-xl" />
                     <select value={g.type} onChange={(e) => setGuestInputs(guestInputs.map((x, j) => j === i ? { ...x, type: e.target.value as any } : x))}
@@ -572,16 +570,14 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                       <option value="child">Criança</option>
                       <option value="baby">Bebê</option>
                     </select>
-                    {guestInputs.length > 1 && (
-                      <button type="button" onClick={() => setGuestInputs(guestInputs.filter((_, j) => j !== i))}
-                        className="p-1.5 bg-rose-50 border border-rose-100 text-rose-500 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-                    )}
+                    <button type="button" onClick={() => setGuestInputs(guestInputs.filter((_, j) => j !== i))}
+                      className="p-1.5 bg-rose-50 border border-rose-100 text-rose-500 rounded-lg cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 ))}
               </div>
               <button type="submit"
                 className="w-full py-3 bg-golden-honey text-white font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer">
-                Cadastrar Família
+                Cadastrar Convidado
               </button>
             </form>
           </div>
