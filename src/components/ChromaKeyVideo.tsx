@@ -14,6 +14,9 @@ export default function ChromaKeyVideo({ src, onEnded, loop = false, style }: Pr
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const endedRef = useRef(false);
+  // Guarda o callback em ref para não re-disparar o effect quando a função muda de referência
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -29,7 +32,7 @@ export default function ChromaKeyVideo({ src, onEnded, loop = false, style }: Pr
       if (endedRef.current) return;
       endedRef.current = true;
       cancelAnimationFrame(rafRef.current);
-      onEnded?.();
+      onEndedRef.current?.();
     }
 
     let frameTick = 0;
@@ -95,7 +98,7 @@ export default function ChromaKeyVideo({ src, onEnded, loop = false, style }: Pr
       cancelAnimationFrame(rafRef.current);
       clearTimeout(timeout);
     };
-  }, [src, onEnded]);
+  }, [src]);
 
   return (
     <div style={style}>

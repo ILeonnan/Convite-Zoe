@@ -24,21 +24,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="min-h-screen bg-vanilla-white flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #FFF8EC 0%, #FFF3DC 50%, #FFF8F0 100%)' }}>
 
       {/* Header */}
-      <header className="bg-daisy-white border-b border-rose-cream/40 sticky top-0 z-30 shadow-xs">
+      <header className="sticky top-0 z-30 shadow-sm" style={{ background: 'linear-gradient(90deg, #E8891A 0%, #F5A623 50%, #FFD95A 100%)' }}>
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">🐝</span>
+            <span className="text-2xl drop-shadow">🐝</span>
             <div>
-              <h1 className="font-title text-base font-bold text-soft-brown leading-tight">Doce Colmeia</h1>
-              <p className="text-[9px] text-soft-brown/45 uppercase tracking-widest font-bold">Central · Zoe 1 Aninho</p>
+              <h1 className="font-title text-base font-extrabold text-white leading-tight drop-shadow-sm">Doce Colmeia</h1>
+              <p className="text-[9px] text-white/70 uppercase tracking-widest font-bold">Central · Zoe 1 Aninho</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:text-rose-500 transition cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold text-white/80 hover:text-white transition cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Sair
           </button>
@@ -49,19 +49,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col md:flex-row max-w-5xl w-full mx-auto md:p-6 md:gap-6">
 
         {/* Desktop sidebar */}
-        <aside className="hidden md:block w-44 shrink-0">
-          <nav className="flex flex-col gap-1 sticky top-24">
+        <aside className="hidden md:block w-48 shrink-0">
+          <nav className="flex flex-col gap-1.5 sticky top-24">
             {NAV.map(({ label, href, Icon, exact }) => {
               const active = exact ? pathname === href : pathname.startsWith(href);
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                  className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition shadow-xs ${
                     active
-                      ? 'bg-golden-honey text-white shadow-xs'
-                      : 'bg-daisy-white border border-rose-cream/20 text-soft-brown/80 hover:bg-rose-cream/10'
+                      ? 'text-white shadow-md'
+                      : 'bg-white/70 border border-amber-100 text-soft-brown/80 hover:bg-amber-50/80'
                   }`}
+                  style={active ? { background: 'linear-gradient(135deg, #F5A623 0%, #E8891A 100%)' } : {}}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -72,15 +73,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Content */}
-        <main className="flex-1 min-w-0 p-4 pb-28 md:pb-8 md:bg-daisy-white md:border md:border-rose-cream/35 md:rounded-3xl md:p-8 md:shadow-xs overflow-hidden">
+        <main className="flex-1 min-w-0 p-4 pb-28 md:pb-8 md:bg-white/80 md:border md:border-amber-100/60 md:rounded-3xl md:p-8 md:shadow-sm overflow-hidden" style={{ backdropFilter: 'blur(8px)' }}>
           {children}
         </main>
       </div>
 
       {/* Mobile bottom tab bar */}
       <nav
-        className="fixed bottom-0 inset-x-0 md:hidden bg-daisy-white/95 backdrop-blur border-t border-rose-cream/30 z-40"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="fixed bottom-0 inset-x-0 md:hidden z-40 shadow-lg"
+        style={{ background: 'linear-gradient(90deg, #E8891A 0%, #F5A623 60%, #FFD95A 100%)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="flex">
           {NAV.map(({ label, href, Icon, exact }) => {
@@ -90,10 +91,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={href}
                 href={href}
                 className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-bold transition ${
-                  active ? 'text-golden-honey' : 'text-soft-brown/40'
+                  active ? 'text-white' : 'text-white/55'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${active ? 'text-golden-honey' : 'text-soft-brown/35'}`} />
+                <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-white/50'}`} />
                 {label}
               </Link>
             );

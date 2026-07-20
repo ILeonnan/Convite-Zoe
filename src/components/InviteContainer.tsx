@@ -125,7 +125,7 @@ export default function InviteContainer({ family, guests }: InviteContainerProps
             className="font-title italic font-extrabold text-center mb-4"
             style={{ fontSize: 'clamp(20px, 6vw, 28px)', color: '#fff', textShadow: '0 2px 12px rgba(0,0,0,0.4), 0 0 40px rgba(248,214,109,0.6)', pointerEvents: 'none' }}
           >
-            Olá, {family.name.replace(/^famíli[ao]\s+/i, '')}{guests.length > 1 ? ' e Família' : ''}!
+            Olá, {guests.length > 1 ? `${family.responsible.split(' ')[0]} e Família` : family.responsible}!
           </p>
 
           {/* Data do evento */}

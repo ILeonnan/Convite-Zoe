@@ -31,9 +31,9 @@ function buildGoogleCalendarUrl() {
   return (
     'https://calendar.google.com/calendar/render?action=TEMPLATE' +
     '&text=' + encodeURIComponent('🐝 1º Aninho da Zoe') +
-    '&dates=20250905T170000/20250905T210000' +
+    `&dates=${EVENT.calendarStart}/${EVENT.calendarEnd}` +
     '&ctz=America/Sao_Paulo' +
-    '&location=' + encodeURIComponent('Casa de Festas Mariana, Rua Juruena 170, Senador Vasconcelos, Rio de Janeiro - RJ') +
+    '&location=' + encodeURIComponent(`${EVENT.venue}, ${EVENT.address}`) +
     '&details=' + encodeURIComponent('Venha celebrar o primeiro aniversário da Zoe! 🍯')
   );
 }
@@ -44,10 +44,10 @@ function downloadICS() {
     'VERSION:2.0',
     'PRODID:-//Zoe1Birthday//PT',
     'BEGIN:VEVENT',
-    'DTSTART;TZID=America/Sao_Paulo:20250905T170000',
-    'DTEND;TZID=America/Sao_Paulo:20250905T210000',
+    `DTSTART;TZID=America/Sao_Paulo:${EVENT.calendarStart}`,
+    `DTEND;TZID=America/Sao_Paulo:${EVENT.calendarEnd}`,
     'SUMMARY:🐝 1º Aninho da Zoe',
-    'LOCATION:Casa de Festas Mariana\\, Rua Juruena 170\\, Rio de Janeiro',
+    `LOCATION:${EVENT.venue}\\, ${EVENT.address}`,
     'DESCRIPTION:Venha celebrar o primeiro aniversário da Zoe! 🍯',
     'END:VEVENT',
     'END:VCALENDAR',
@@ -74,7 +74,10 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
     alreadyAnswered ? 'success' : 'intro'
   );
   const [showCelebration, setShowCelebration] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
+  // Agenda aparece imediatamente se o convidado já havia confirmado antes
+  const [showCalendar, setShowCalendar] = useState(() =>
+    alreadyAnswered && initialGuests.some((g) => g.status === 'confirmed')
+  );
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -873,7 +876,7 @@ export default function ConfirmationForm({ familyId, initialGuests, onComplete }
                 marginBottom: 16,
                 lineHeight: 1.5,
               }}>
-                05 de Setembro · Sexta-feira · 17h00
+                {EVENT.dateShort} · {EVENT.weekday} · {EVENT.time}
               </p>
 
               {/* Botões */}

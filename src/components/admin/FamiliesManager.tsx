@@ -4,13 +4,14 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Plus, Upload, Trash2, Copy, Check,
-  MessageCircle, Bell, ChevronDown, ChevronUp, X, Download, FileSpreadsheet, RotateCcw,
+  MessageCircle, Bell, ChevronDown, ChevronUp, X, Download, FileSpreadsheet, RotateCcw, Pencil,
 } from 'lucide-react';
 import {
   addFamilyAction, deleteFamilyAction,
   bulkAddFamiliesAction, updateFamilySentStatusAction,
-  resetFamilyConfirmationAction,
+  resetFamilyConfirmationAction, addGuestToFamilyAction, updateGuestAction,
 } from '@/app/actions';
+import { INVITE_TEMPLATE, REMINDER_TEMPLATE, fillTemplate } from '@/lib/templates';
 
 interface Guest {
   id: string; name: string;
@@ -110,11 +111,18 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [responsible, setResponsible] = useState('');
+  const [responsibleType, setResponsibleType] = useState<'adult' | 'child' | 'baby'>('adult');
   const [phone, setPhone] = useState('');
   const [guestInputs, setGuestInputs] = useState<{ name: string; type: 'adult' | 'child' | 'baby' }[]>([]);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState('');
+  const [addingGuestFor, setAddingGuestFor] = useState<string | null>(null);
+  const [newGuestName, setNewGuestName] = useState('');
+  const [newGuestType, setNewGuestType] = useState<'adult' | 'child' | 'baby'>('adult');
+  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
+  const [editGuestName, setEditGuestName] = useState('');
+  const [editGuestType, setEditGuestType] = useState<'adult' | 'child' | 'baby'>('adult');
 
   // Analytics lookup map
   const evMap: Record<string, Record<string, number>> = {};
@@ -154,40 +162,103 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
     let clean = fam.phone.replace(/\D/g, '');
     if (clean.length === 10 || clean.length === 11) clean = '55' + clean;
     const link = `${window.location.origin}/invite/${fam.token}`;
-    const text = isReminder
-      ? `Olá, *${fam.responsible}*! Passando para lembrar de confirmar a presença para o primeiro aninho da Zoe. 🌼\n\n${link}\n\nSe puder nos responder até dia 10 de Agosto, agradecemos muito! 🐝`
-      : `Olá, *${fam.responsible}*! Tudo bem? 🐝\nEstamos muito felizes em convidar vocês para comemorar o primeiro aninho da Zoe!\nPreparamos um convite personalizado e interativo para vocês:\n\n${link}\n\nEsperamos vocês na nossa doce colmeia! 🍯🌼`;
+    const template = isReminder ? REMINDER_TEMPLATE : INVITE_TEMPLATE;
+    const text = fillTemplate(template, fam.responsible, link);
     window.open(`https://api.whatsapp.com/send?phone=${clean}&text=${encodeURIComponent(text)}`, '_blank');
     await updateFamilySentStatusAction(fam.id, true);
-    router.refresh();
+    // Atualiza estado local imediatamente
+    setFamilies((prev) => prev.map((f) => f.id === fam.id ? { ...f, status: 'sent' } : f));
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta família?')) return;
+    if (!confirm('Excluir este convidado?')) return;
     const res = await deleteFamilyAction(id);
-    if (res.success) { router.refresh(); setTimeout(() => window.location.reload(), 500); }
-    else alert('Erro ao excluir.');
+    if (res.success) {
+      setFamilies((prev) => prev.filter((f) => f.id !== id));
+    } else alert('Erro ao excluir.');
   };
 
   const handleResetConfirmation = async (id: string, name: string) => {
-    if (!confirm(`Resetar confirmação de "${name}"?\n\nTodos os integrantes voltarão para Pendente e o convidado poderá confirmar novamente.`)) return;
+    if (!confirm(`Liberar reconfirmação de "${name}"?\n\nTodos voltarão para Pendente e o convidado poderá confirmar novamente.`)) return;
     const res = await resetFamilyConfirmationAction(id);
-    if (res.success) { router.refresh(); setTimeout(() => window.location.reload(), 500); }
-    else alert('Erro ao resetar.');
+    if (res.success) {
+      // Atualiza estado local imediatamente — sem depender de cache
+      setFamilies((prev) => prev.map((f) =>
+        f.id === id
+          ? { ...f, status: 'sent', last_interaction: null, guests: f.guests.map((g) => ({ ...g, status: 'pending', confirmed_at: null })) }
+          : f
+      ));
+    } else alert('Erro ao resetar.');
+  };
+
+  const handleAddGuestToFamily = async (familyId: string) => {
+    if (!newGuestName.trim()) return;
+    const res = await addGuestToFamilyAction(familyId, { name: newGuestName.trim(), type: newGuestType });
+    if (res.success) {
+      setFamilies((prev) => prev.map((f) => f.id === familyId
+        ? { ...f, guests: [...f.guests, { id: crypto.randomUUID(), name: newGuestName.trim(), type: newGuestType, status: 'pending' }] }
+        : f));
+      setAddingGuestFor(null); setNewGuestName(''); setNewGuestType('adult');
+    } else alert(res.error || 'Erro ao adicionar convidado.');
+  };
+
+  const handleStartEditGuest = (guest: Guest) => {
+    setEditingGuestId(guest.id); setEditGuestName(guest.name); setEditGuestType(guest.type);
+  };
+
+  const handleUpdateGuest = async (familyId: string, guestId: string) => {
+    if (!editGuestName.trim()) return;
+    const res = await updateGuestAction(guestId, { name: editGuestName.trim(), type: editGuestType });
+    if (res.success) {
+      setFamilies((prev) => prev.map((f) => f.id === familyId
+        ? { ...f, guests: f.guests.map((g) => g.id === guestId ? { ...g, name: editGuestName.trim(), type: editGuestType } : g) }
+        : f));
+      setEditingGuestId(null);
+    } else alert(res.error || 'Erro ao atualizar convidado.');
   };
 
   const handleCreateFamily = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!responsible.trim() || !phone.trim()) return alert('Nome e Telefone são obrigatórios!');
     const extras = guestInputs.filter((g) => g.name.trim());
-    // O responsável é automaticamente o primeiro convidado adulto
-    const allGuests = [{ name: responsible.trim(), type: 'adult' as const }, ...extras];
-    const res = await addFamilyAction(responsible.trim(), responsible.trim(), phone, allGuests);
+    const allGuests = [{ name: responsible.trim(), type: responsibleType }, ...extras];
+    const firstName = responsible.trim().split(' ')[0];
+    const familyName = extras.length > 0 ? `${firstName} e Família` : responsible.trim();
+    const res = await addFamilyAction(familyName, responsible.trim(), phone, allGuests);
     if (res.success) {
       setShowAddModal(false); setResponsible(''); setPhone('');
-      setGuestInputs([]);
+      setResponsibleType('adult'); setGuestInputs([]);
       setTimeout(() => window.location.reload(), 500);
     } else alert(res.error || 'Erro ao adicionar.');
+  };
+
+  const MAX_COMPANIONS = 9; // responsável + 9 acompanhantes = 10 pessoas por família
+
+  const downloadTemplate = async () => {
+    const XLSX = await import('xlsx');
+    const headers = [
+      'Nome do Convidado',
+      'Tipo (Adulto / Criança / Bebê)',
+      'Telefone (com DDD, somente números)',
+      ...Array.from({ length: MAX_COMPANIONS }, (_, i) => [
+        `Acompanhante ${i + 1} - Nome`,
+        `Acompanhante ${i + 1} - Tipo (Adulto / Criança / Bebê)`,
+      ]).flat(),
+    ];
+    const examples = [
+      ['Ana Silva',    'Adulto', '21999991111', ...Array(MAX_COMPANIONS * 2).fill('')],
+      ['João Souza',   'Adulto', '21988882222', 'Maria Souza', 'Adulto', 'Pedro Souza', 'Criança', ...Array((MAX_COMPANIONS - 2) * 2).fill('')],
+      ['Beatriz Lima', 'Adulto', '21977773333', 'Carlos Lima', 'Adulto', 'Sofia Lima',  'Bebê',    'Lucas Lima', 'Criança', ...Array((MAX_COMPANIONS - 3) * 2).fill('')],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
+    ws['!cols'] = [{ wch: 28 }, { wch: 30 }, { wch: 28 }, ...Array(MAX_COMPANIONS * 2).fill({ wch: 24 })];
+    // Dropdown nas colunas de tipo (E, G, I, ...) para linhas 2-200
+    const typeCols = ['B', ...Array.from({ length: MAX_COMPANIONS }, (_, i) => XLSX.utils.encode_col(4 + i * 2))];
+    const typeValidation = { type: 'list', formula1: '"Adulto,Criança,Bebê"', showDropDown: false, sqref: typeCols.map((c) => `${c}2:${c}200`).join(' ') };
+    ws['!dataValidations'] = [typeValidation];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Convidados');
+    XLSX.writeFile(wb, 'modelo-convidados-zoe.xlsx');
   };
 
   const handleExcelImport = async (e: React.FormEvent) => {
@@ -207,27 +278,29 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           const responsible = String(row[0] ?? '').trim();
-          const phone       = String(row[1] ?? '').trim();
-          const groupName   = String(row[2] ?? '').trim();
+          const rawMainType = String(row[1] ?? '').trim().toLowerCase();
+          const phone       = String(row[2] ?? '').trim();
           if (!responsible || !phone) continue;
 
-          const guests: { name: string; type: 'adult' | 'child' | 'baby' }[] = [];
-          for (let m = 0; m < 5; m++) {
+          const mainType: 'adult' | 'child' | 'baby' =
+            rawMainType.includes('crian') ? 'child' : rawMainType.includes('beb') ? 'baby' : 'adult';
+
+          // Acompanhantes: col 3+4, 5+6, 7+8, ... (MAX_COMPANIONS pares)
+          const companions: { name: string; type: 'adult' | 'child' | 'baby' }[] = [];
+          for (let m = 0; m < MAX_COMPANIONS; m++) {
             const name = String(row[3 + m * 2] ?? '').trim();
             const raw  = String(row[4 + m * 2] ?? '').trim().toLowerCase();
             if (!name) continue;
             const type: 'adult' | 'child' | 'baby' =
               raw.includes('crian') ? 'child' : raw.includes('beb') ? 'baby' : 'adult';
-            guests.push({ name, type });
+            companions.push({ name, type });
           }
-          if (!guests.length) guests.push({ name: responsible, type: 'adult' });
 
-          parsed.push({
-            responsible,
-            phone,
-            familyName: groupName || `Família ${responsible.split(' ').pop()}`,
-            guests,
-          });
+          const allGuests = [{ name: responsible, type: mainType }, ...companions];
+          const firstName = responsible.split(' ')[0];
+          const familyName = companions.length > 0 ? `${firstName} e Família` : responsible;
+
+          parsed.push({ responsible, phone, familyName, guests: allGuests });
         }
 
         if (!parsed.length) return setErrorMsg('Nenhuma linha válida encontrada. Verifique se usou o modelo correto.');
@@ -402,10 +475,19 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                   {flatGuests.filter(g => g.status === 'pending').length} pendentes
                 </span>
               </div>
-              {flatGuests.map((g, i) => (
-                <div key={g.id} className={`flex items-center gap-3 px-4 py-2.5 ${i !== flatGuests.length - 1 ? 'border-b border-rose-cream/10' : ''}`}>
+              {flatGuests.map((g, i) => {
+                const rowBg =
+                  g.status === 'confirmed' ? 'bg-emerald-50/70 border-l-4 border-l-emerald-400' :
+                  g.status === 'declined'  ? 'bg-rose-50/70 border-l-4 border-l-rose-400' :
+                  'border-l-4 border-l-transparent';
+                const nameCls =
+                  g.status === 'confirmed' ? 'text-emerald-800 font-bold' :
+                  g.status === 'declined'  ? 'text-rose-700 font-bold' :
+                  'text-soft-brown font-semibold';
+                return (
+                <div key={g.id} className={`flex items-center gap-3 px-4 py-3 ${rowBg} ${i !== flatGuests.length - 1 ? 'border-b border-rose-cream/10' : ''}`}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-soft-brown truncate">{g.name}</p>
+                    <p className={`text-sm truncate ${nameCls}`}>{g.name}</p>
                     <p className="text-[10px] text-soft-brown/45 truncate">
                       {g.type === 'child' ? 'Criança' : g.type === 'baby' ? 'Bebê' : 'Adulto'}
                       {g.familySize > 1 && g.familyName !== g.name && (
@@ -414,14 +496,15 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                     </p>
                   </div>
                   {g.status === 'confirmed' ? (
-                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full whitespace-nowrap">✓ Vai</span>
+                    <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-full whitespace-nowrap">✓ Vai</span>
                   ) : g.status === 'declined' ? (
-                    <span className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-full whitespace-nowrap">Não vai</span>
+                    <span className="text-[11px] font-extrabold text-rose-600 bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-full whitespace-nowrap">✗ Não vai</span>
                   ) : (
                     <span className="text-[11px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-full whitespace-nowrap">Pendente</span>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
         </div>
@@ -436,8 +519,6 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
           const isExpanded = expandedId === fam.id;
           const ev = evMap[fam.id] || {};
           const confirmed = fam.guests.filter((g) => g.status === 'confirmed').length;
-          const canRemind = fam.status === 'sent' || fam.status === 'opened';
-
           return (
             <div key={fam.id} className="bg-white/70 border border-rose-cream/25 rounded-2xl overflow-hidden shadow-xs">
 
@@ -461,12 +542,14 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
 
                 {/* Ações rápidas */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button onClick={() => handleWhatsApp(fam, false)} title="Enviar Convite"
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition cursor-pointer">
-                    <MessageCircle className="w-3 h-3" />
-                    <span className="hidden sm:inline">Enviar</span>
-                  </button>
-                  {canRemind && (
+                  {fam.status === 'pending' && (
+                    <button onClick={() => handleWhatsApp(fam, false)} title="Enviar Convite"
+                      className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+                      <MessageCircle className="w-3 h-3" />
+                      <span className="hidden sm:inline">Enviar</span>
+                    </button>
+                  )}
+                  {(fam.status === 'sent' || fam.status === 'opened') && (
                     <button onClick={() => handleWhatsApp(fam, true)} title="Lembrete"
                       className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition cursor-pointer">
                       <Bell className="w-3 h-3" />
@@ -503,7 +586,11 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                   <div className="px-4 py-3 space-y-1.5">
                     <p className="text-[10px] font-bold text-soft-brown/45 uppercase tracking-wider mb-2">Engajamento</p>
                     {METRICS.map((m) => {
-                      const count = ev[m.key] || 0;
+                      // "Confirmou" reflete o status real atual dos guests, não o histórico de analytics
+                      const isConfirmedMetric = m.key === 'confirmation_completed';
+                      const count = isConfirmedMetric
+                        ? (fam.guests.some((g) => g.status === 'confirmed') ? 1 : 0)
+                        : (ev[m.key] || 0);
                       return (
                         <div key={m.key} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -525,30 +612,77 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                   </div>
 
                   {/* Convidados */}
-                  {fam.guests.length > 0 && (
-                    <div className="px-4 py-3 space-y-1.5">
-                      <p className="text-[10px] font-bold text-soft-brown/45 uppercase tracking-wider mb-2">
+                  <div className="px-4 py-3 space-y-1.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-bold text-soft-brown/45 uppercase tracking-wider">
                         Convidados ({fam.guests.length})
                       </p>
-                      {fam.guests.map((g) => (
-                        <div key={g.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                      {addingGuestFor !== fam.id && (
+                        <button type="button" onClick={() => { setAddingGuestFor(fam.id); setNewGuestName(''); setNewGuestType('adult'); }}
+                          className="py-1 px-2.5 bg-vanilla-white border border-rose-cream/35 hover:bg-rose-cream/25 rounded-lg text-[10px] font-bold text-soft-brown cursor-pointer">
+                          + Adicionar
+                        </button>
+                      )}
+                    </div>
+                    {fam.guests.map((g) => (
+                      editingGuestId === g.id ? (
+                        <div key={g.id} className="flex gap-2 items-center">
+                          <input type="text" autoFocus value={editGuestName}
+                            onChange={(e) => setEditGuestName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleUpdateGuest(fam.id, g.id); } }}
+                            className="flex-1 p-2 bg-vanilla-white/60 border border-rose-cream/30 rounded-xl text-xs" />
+                          <select value={editGuestType} onChange={(e) => setEditGuestType(e.target.value as any)}
+                            className="p-2 bg-vanilla-white/60 border border-rose-cream/30 rounded-xl text-xs">
+                            <option value="adult">Adulto</option>
+                            <option value="child">Criança</option>
+                            <option value="baby">Bebê</option>
+                          </select>
+                          <button type="button" onClick={() => handleUpdateGuest(fam.id, g.id)}
+                            className="p-2 bg-golden-honey hover:brightness-105 text-white rounded-lg cursor-pointer"><Check className="w-3.5 h-3.5" /></button>
+                          <button type="button" onClick={() => setEditingGuestId(null)}
+                            className="p-2 bg-vanilla-white border border-rose-cream/30 text-soft-brown/50 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ) : (
+                        <div key={g.id} className="flex items-center justify-between group">
+                          <div className="flex items-center gap-2 min-w-0">
                             <span className="text-[10px] text-soft-brown/30 w-12 shrink-0">
                               {g.type === 'child' ? 'Criança' : g.type === 'baby' ? 'Bebê' : 'Adulto'}
                             </span>
-                            <span className="text-xs font-semibold text-soft-brown">{g.name}</span>
+                            <span className="text-xs font-semibold text-soft-brown truncate">{g.name}</span>
+                            <button type="button" onClick={() => handleStartEditGuest(g)} title="Editar convidado"
+                              className="p-1 text-soft-brown/30 hover:text-soft-brown shrink-0 cursor-pointer">
+                              <Pencil className="w-3 h-3" />
+                            </button>
                           </div>
                           {g.status === 'confirmed' ? (
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Vai ✓</span>
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">Vai ✓</span>
                           ) : g.status === 'declined' ? (
-                            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">Não vai</span>
+                            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full shrink-0">Não vai</span>
                           ) : (
-                            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">Pendente</span>
+                            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full shrink-0">Pendente</span>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )
+                    ))}
+                    {addingGuestFor === fam.id && (
+                      <div className="flex gap-2 items-center pt-1.5 border-t border-rose-cream/10 mt-2">
+                        <input type="text" autoFocus placeholder="Nome do convidado" value={newGuestName}
+                          onChange={(e) => setNewGuestName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddGuestToFamily(fam.id); } }}
+                          className="flex-1 p-2 bg-vanilla-white/60 border border-rose-cream/30 rounded-xl text-xs" />
+                        <select value={newGuestType} onChange={(e) => setNewGuestType(e.target.value as any)}
+                          className="p-2 bg-vanilla-white/60 border border-rose-cream/30 rounded-xl text-xs">
+                          <option value="adult">Adulto</option>
+                          <option value="child">Criança</option>
+                          <option value="baby">Bebê</option>
+                        </select>
+                        <button type="button" onClick={() => handleAddGuestToFamily(fam.id)}
+                          className="p-2 bg-golden-honey hover:brightness-105 text-white rounded-lg cursor-pointer"><Plus className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => setAddingGuestFor(null)}
+                          className="p-2 bg-vanilla-white border border-rose-cream/30 text-soft-brown/50 rounded-lg cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -562,13 +696,21 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
           <div className="bg-daisy-white border border-rose-cream/40 w-full sm:max-w-md p-6 rounded-t-3xl sm:rounded-3xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-rose-cream/20 pb-3">
               <h3 className="font-title text-lg font-bold text-soft-brown">Novo Convidado</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-soft-brown/50 hover:text-soft-brown cursor-pointer"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setShowAddModal(false); setResponsible(''); setPhone(''); setResponsibleType('adult'); setGuestInputs([]); }} className="text-soft-brown/50 hover:text-soft-brown cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleCreateFamily} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-soft-brown/60 uppercase mb-1">Nome do Convidado *</label>
-                <input type="text" required value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Ana Silva"
-                  className="w-full p-2.5 bg-vanilla-white/60 border border-rose-cream/35 rounded-xl" />
+                <div className="flex gap-2">
+                  <input type="text" required value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Ana Silva"
+                    className="flex-1 p-2.5 bg-vanilla-white/60 border border-rose-cream/35 rounded-xl" />
+                  <select value={responsibleType} onChange={(e) => setResponsibleType(e.target.value as any)}
+                    className="p-2.5 bg-vanilla-white/60 border border-rose-cream/35 rounded-xl">
+                    <option value="adult">Adulto</option>
+                    <option value="child">Criança</option>
+                    <option value="baby">Bebê</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block font-bold text-soft-brown/60 uppercase mb-1">Telefone *</label>
@@ -626,10 +768,10 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
               <div>
                 <p className="text-xs font-bold text-soft-brown mb-1">Baixe o modelo de planilha</p>
                 <p className="text-[11px] text-soft-brown/60 mb-2">Preencha com os convidados e salve como .xlsx</p>
-                <a href="/modelo-convidados.xlsx" download
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-golden-honey/15 border border-golden-honey/30 text-golden-honey font-bold rounded-xl text-xs hover:bg-golden-honey/25 transition">
+                <button type="button" onClick={downloadTemplate}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-golden-honey/15 border border-golden-honey/30 text-golden-honey font-bold rounded-xl text-xs hover:bg-golden-honey/25 transition cursor-pointer">
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Baixar modelo (.xlsx)
-                </a>
+                </button>
               </div>
             </div>
 

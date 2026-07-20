@@ -188,6 +188,9 @@ export async function getDashboardStatsAction() {
       confirmed: guestsData?.filter(g => g.status === 'confirmed').length || 0,
       declined: guestsData?.filter(g => g.status === 'declined').length || 0,
       pending: guestsData?.filter(g => g.status === 'pending').length || 0,
+      adultsTotal: guestsData?.filter(g => g.type === 'adult').length || 0,
+      childrenTotal: guestsData?.filter(g => g.type === 'child').length || 0,
+      babiesTotal: guestsData?.filter(g => g.type === 'baby').length || 0,
       adultsConfirmed: guestsData?.filter(g => g.status === 'confirmed' && g.type === 'adult').length || 0,
       childrenConfirmed: guestsData?.filter(g => g.status === 'confirmed' && g.type === 'child').length || 0,
       babiesConfirmed: guestsData?.filter(g => g.status === 'confirmed' && g.type === 'baby').length || 0,
@@ -197,6 +200,7 @@ export async function getDashboardStatsAction() {
       locationOpened: analyticsEvents?.filter(e => e.event_type === 'location_opened').length || 0,
       giftViewed: analyticsEvents?.filter(e => e.event_type === 'gift_viewed').length || 0,
       calendarAdded: analyticsEvents?.filter(e => e.event_type === 'calendar_added').length || 0,
+      rsvpOpened: analyticsEvents?.filter(e => e.event_type === 'rsvp_opened').length || 0,
     };
 
     return {
@@ -276,6 +280,47 @@ export async function addFamilyAction(
   } catch (err) {
     console.error('addFamilyAction error:', err);
     return { success: false, error: 'Erro ao adicionar família.' };
+  }
+}
+
+export async function addGuestToFamilyAction(
+  familyId: string,
+  guest: { name: string; type: 'adult' | 'child' | 'baby' }
+) {
+  try {
+    const { error } = await supabase
+      .from('guests')
+      .insert({ family_id: familyId, name: guest.name, type: guest.type, status: 'pending' });
+
+    if (error) throw error;
+
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
+    return { success: true };
+  } catch (err) {
+    console.error('addGuestToFamilyAction error:', err);
+    return { success: false, error: 'Erro ao adicionar convidado.' };
+  }
+}
+
+export async function updateGuestAction(
+  guestId: string,
+  guest: { name: string; type: 'adult' | 'child' | 'baby' }
+) {
+  try {
+    const { error } = await supabase
+      .from('guests')
+      .update({ name: guest.name, type: guest.type })
+      .eq('id', guestId);
+
+    if (error) throw error;
+
+    revalidatePath('/admin');
+    revalidatePath('/admin/families');
+    return { success: true };
+  } catch (err) {
+    console.error('updateGuestAction error:', err);
+    return { success: false, error: 'Erro ao atualizar convidado.' };
   }
 }
 
