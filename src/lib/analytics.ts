@@ -1,11 +1,18 @@
 import { headers } from 'next/headers';
 import { supabase } from './supabase';
 
+// Crawlers que geram link preview (WhatsApp, Facebook, Slack, etc.) buscam a URL
+// assim que o link é digitado/colado numa conversa — antes de qualquer envio real
+// ou abertura pelo convidado. Sem esse filtro, isso já contava como "convite aberto".
+const BOT_USER_AGENT = /bot|crawler|spider|facebookexternalhit|whatsapp|slackbot|telegrambot|linkedinbot|twitterbot|discordbot|skypeuripreview|w3c_validator|google-inspectiontool|pinterest|redditbot|baiduspider|yandexbot|applebot/i;
+
 export async function trackEvent(familyId: string | null, eventType: string) {
   try {
     const headersList = await headers();
     const userAgent = headersList.get('user-agent') || '';
-    
+
+    if (BOT_USER_AGENT.test(userAgent)) return;
+
     // Simple User-Agent parser
     let browser = 'Unknown';
     if (userAgent.includes('Firefox')) browser = 'Firefox';
