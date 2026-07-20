@@ -550,11 +550,18 @@ export default function FamiliesManager({ initialFamilies, analyticsEvents = [] 
                     </button>
                   )}
                   {(fam.status === 'sent' || fam.status === 'opened') && (
-                    <button onClick={() => handleWhatsApp(fam, true)} title="Lembrete"
-                      className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition cursor-pointer">
-                      <Bell className="w-3 h-3" />
-                      <span className="hidden sm:inline">Lembrar</span>
-                    </button>
+                    <>
+                      <button onClick={() => handleWhatsApp(fam, false)} title="Reenviar Convite"
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+                        <MessageCircle className="w-3 h-3" />
+                        <span className="hidden sm:inline">Reenviar</span>
+                      </button>
+                      <button onClick={() => handleWhatsApp(fam, true)} title="Lembrete"
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+                        <Bell className="w-3 h-3" />
+                        <span className="hidden sm:inline">Lembrar</span>
+                      </button>
+                    </>
                   )}
                   <button onClick={() => handleCopyLink(fam.token)} title="Copiar link"
                     className="p-1.5 bg-white border border-rose-cream/30 hover:bg-rose-cream/10 text-soft-brown/60 rounded-lg cursor-pointer">
